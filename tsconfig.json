@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@backend/*": ["backend/src/*"],
+        "@frontend/*": ["frontend/src/*"]
+      },
+      "composite": true,
+      "skipLibCheck": true
+    },
+    "include": ["frontend", "backend"]
+  }
+  

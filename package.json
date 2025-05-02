@@ -1,0 +1,20 @@
+{
+    "name": "itaagro-mvp",
+    "private": true,
+    "workspaces": [
+      "frontend",
+      "backend"
+    ],
+    "scripts": {
+      "dev:frontend": "yarn workspace frontend dev",
+      "dev:backend": "yarn workspace backend dev",
+      "build": "yarn workspace frontend build && yarn workspace backend build",
+      "lint": "eslint . --ext .ts,.tsx,.js,.jsx"
+    },
+    "devDependencies": {
+      "eslint": "^8.0.0",
+      "prettier": "^2.0.0",
+      "typescript": "^5.0.0"
+    }
+  }
+  
