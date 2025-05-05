@@ -33,8 +33,8 @@ A seguir, os UC essenciais para garantir operação fluida e completa:
 
 | ID    | Nome                        | Ator    | Objetivo                                         |   |
 | ----- | --------------------------- | ------- | ------------------------------------------------ | - |
-| UC-01 | Login                       | Usuário | Autenticar no Web App                            |   |
-| UC-02 | Recuperar Senha             | Usuário | Enviar link para redifinir senha                 |   |
+| UC-01 | Login                       | Usuário | Autenticar no Web App                            |ok |
+| UC-02 | Recuperar Senha             | Usuário | Enviar link para redifinir senha                 |ok |
 | UC-03 | Assinatura / Checkout       | Usuário | Comprar acesso mensal via Hotmart                |   |
 | UC-04 | Verificar Plano             | Sistema | Validar assinatura antes de permitir chat        |   |
 | UC-05 | Enviar Mensagem             | Usuário | Enviar pergunta para o bot                       |   |
@@ -43,10 +43,11 @@ A seguir, os UC essenciais para garantir operação fluida e completa:
 | UC-08 | Detalhar Produto            | Usuário | Exibir bula PDF e ficha técnica do item          |   |
 | UC-09 | Histórico de Chat           | Usuário | Visualizar conversas anteriores                  |   |
 | UC-10 | Integração WhatsApp         | Sistema | Receber/Enviar mensagens via Twilio              |   |
-| UC-11 | Integração Telegram         | Sistema | Receber/Enviar mensagens via Telegram Bot API    |   |
+| UC-11 | Tela de Atendimento         | Usuário | Selec. o tipo de serviço antes de iniciar o chat |   |
 | UC-12 | Importar/Atualizar Dados    | Admin   | Upload de CSV/Airtable com produtos e preços     |   |
 | UC-13 | Gerenciar Usuários & Planos | Admin   | CRUD de usuários e níveis de acesso              |   |
 | UC-14 | Painel de Métricas          | Admin   | Visualizar KPIs: uso de chat, consultas, receita |   |
+
 
 Cada UC deverá conter: pré-condição, gatilho, fluxo principal, fluxos alternativos, pós-condição. (Exemplo em anexo ao final).
 
@@ -136,7 +137,3 @@ Essa estrutura permite deploy e CI/CD independentes: o front pode ir para Vercel
 | 3      | Base de produtos (search + detalhe)      | 1 semana |
 | 4      | Stripe + Webhooks, controle de acesso    | 1 semana |
 | 5      | Bots WhatsApp & Telegram + testes finais | 1 semana |
-
----
-
-*Esta documentação serve como ponto de partida e deve ser validada em workshop com o stakeholder (Engenheiro Agrônomo) antes de detalhar cada caso de uso.*
