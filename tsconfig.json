@@ -1,13 +1,10 @@
+// /dev/ItaAgro/tsconfig.json
 {
     "compilerOptions": {
-      "baseUrl": ".",
-      "paths": {
-        "@backend/*": ["backend/src/*"],
-        "@frontend/*": ["frontend/src/*"]
-      },
-      "composite": true,
-      "skipLibCheck": true
-    },
-    "include": ["frontend", "backend"]
+      "skipLibCheck": true,
+      "strict": true,
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true
+    }
   }
   

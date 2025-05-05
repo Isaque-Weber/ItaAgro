@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "4000:4000"
+    command: npm run dev
