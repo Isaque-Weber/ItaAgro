@@ -1,24 +1,32 @@
 // frontend/src/App.tsx
 import React, { useState, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { Login } from './pages/Login'
-import { Dashboard } from './pages/Dashboard'
-import { RecoverPassword } from './pages/RecoverPassword'
-import { Signup } from './pages/Signup'
-import { Chat } from './pages/Chat'
+import {AppRoutes} from "./routes";
 
 export function App() {
   // null = ainda carregando, true/false = estado de auth
-  const [isAuth, setIsAuth] = useState<boolean | null>(null)
+    const [isAuth, setIsAuth] = useState<boolean | null>(null)
+    const [userRole, setUserRole] = useState<string | null>(null)
 
   // Na montagem, verifica a sessão no backend
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
-      credentials: 'include',
-    })
-      .then(res => { setIsAuth(res.ok) })
-      .catch(() => setIsAuth(false))
-  }, [])
+    useEffect(() => {
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
+            credentials: 'include',
+        })
+            .then(async res => {
+                if (res.ok) {
+                    const data = await res.json()     // { email, role }
+                    setIsAuth(true)
+                    setUserRole(data.role)
+                } else {
+                    setIsAuth(false)
+                    setUserRole(null)
+                }
+            })
+            .catch(() => {
+                setIsAuth(false)
+                setUserRole(null)
+            })
+    }, [])
 
   // Enquanto verifica, mostra algo (pode ser skeleton ou spinner)
   if (isAuth === null) {
@@ -30,55 +38,17 @@ export function App() {
   }
 
   return (
-
-    <Routes>
-      <Route
-        path="/"
-        element={
-          isAuth
-            ? <Dashboard onLogout={() => setIsAuth(false)} />
-            : <Navigate to="/login" replace />
-        }
+      <AppRoutes
+          isAuth={isAuth}
+          userRole={userRole}
+          onLogin={() => setIsAuth(true)}
+          setUserRole={setUserRole}
+          onLogout={() => {
+              // opcional: chamar /auth/logout antes de limpar
+              setIsAuth(false)
+              setUserRole(null)
+          }}
       />
-      <Route
-        path="/login"
-        element={
-          isAuth
-            ? <Navigate to="/chat" replace />
-            : <Login onLogin={() => setIsAuth(true)} />
-        }
-      />
-      <Route
-        path="/recover"
-        element={
-          isAuth
-            ? <Navigate to="/chat" replace />
-            : <RecoverPassword />
-        }
-      />
-      <Route
-        path="/signup"
-        element={
-          isAuth
-            ? <Navigate to="/chat" replace />
-            : <Signup />
-        }
-      />
-      <Route
-        path="/chat"
-        element={
-          isAuth
-            ? <Chat onLogout={() => setIsAuth(false)} />
-            : <Navigate to="/login" replace />
-        }
-      />
-      <Route
-        path="*"
-        element={
-          <Navigate to={isAuth ? '/chat' : '/login'} replace />
-        }
-      />
-    </Routes>
 
   )
 }

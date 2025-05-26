@@ -1,57 +1,74 @@
-// frontend/src/pages/Dashboard.tsx
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
 interface DashboardProps {
   onLogout: () => void
+  userRole: string
 }
 
-export function Dashboard({ onLogout }: DashboardProps) {
+export function Dashboard({ onLogout, userRole }: DashboardProps) {
   const navigate = useNavigate()
 
   const services = [
-    { label: 'Consultar Bula',      path: '/products' },
-    { label: 'Tabela de Preços',    path: '/pricing' },
-    { label: 'Análise de Solo',     path: '/soil' },
-    { label: 'Ajuda sobre Produtos',path: '/chat' },
+    { label: 'Consultar Bula', path: '/chat' },
+    { label: 'Tabela de Preços', path: '/chat' },
+    { label: 'Análise de Solo', path: '/chat' },
+    { label: 'Ajuda sobre Produtos', path: '/chat' },
   ]
 
   return (
-    <div className="flex flex-col min-h-screen bg-green-50">
-      {/* Header */}
-      <header className="bg-green-600 text-white p-4 flex justify-between items-center">
-        <h1 className="text-xl font-semibold">Ita Agro • Atendimento</h1>
-        <button 
-          onClick={onLogout} 
-          className="underline hover:text-green-200 transition"
-        >
-          Sair
-        </button>
-      </header>
+      <div className="flex flex-col min-h-screen bg-[#f1fdf5]">
+        {/* Header */}
+        <header className="bg-[#2e7d32] text-white p-5 flex justify-between items-center shadow">
+          <h1 className="text-2xl font-bold tracking-wide">🌱 Ita Agro • Atendimento</h1>
+          <button
+              onClick={onLogout}
+              className="text-sm underline hover:text-green-200 transition"
+          >
+            Sair
+          </button>
+        </header>
 
-      {/* Main: card centralizado */}
-      <main className="flex-1 flex justify-center items-start p-6">
-        <div className="w-full max-w-lg">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Main */}
+        <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
+          <div className="w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-4">
             {services.map((btn) => (
-              <button
-                key={btn.path}
-                onClick={() => navigate(btn.path)}
-                className="
-                  w-full md:w-auto
-                  px-6 py-3
-                  bg-green-600 text-white
-                  rounded-lg
-                  hover:bg-green-700
-                  transition duration-200
-                "
-              >
-                {btn.label}
-              </button>
+                <button
+                    key={btn.path}
+                    onClick={() => navigate(btn.path)}
+                    className="
+                w-full
+                px-6 py-3
+                bg-[#43a047] text-white
+                rounded-lg
+                font-medium text-lg
+                hover:bg-[#388e3c]
+                transition duration-200 shadow-md
+              "
+                >
+                  {btn.label}
+                </button>
             ))}
           </div>
-        </div>
-      </main>
-    </div>
+
+          {userRole === 'admin' && (
+              <div className="mt-8">
+                <button
+                    onClick={() => navigate('/admin')}
+                    className="
+                px-6 py-3
+                bg-[#43a047] text-white
+                rounded-lg
+                font-medium text-lg
+                hover:bg-[#388e3c]
+                transition duration-200 shadow-md
+              "
+                >
+                  Ir para Painel Admin
+                </button>
+              </div>
+          )}
+        </main>
+      </div>
   )
 }

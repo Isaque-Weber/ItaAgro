@@ -1,49 +1,84 @@
-import { FastifyInstance } from 'fastify';
-import fastifyJwt from '@fastify/jwt';
+// backend/src/controllers/auth.ts
+import { FastifyInstance } from 'fastify'
+import {AppDataSource} from "../services/typeorm/data-source";
+import {User} from "../entities/User";
+import bcrypt from 'bcrypt'
 
 export async function authRoutes(app: FastifyInstance) {
-    app.register(fastifyJwt, { secret: 'your-secret-key' })
+    // ** NÃO repita fastify.register(fastifyJwt) aqui **
+    // 1) Login
+    app.post(
+        '/login',                     // se for dentro de authRoutes com prefix '/auth'
+        {
+            schema: {
+                body: {
+                    type: 'object',
+                    required: ['email','password'],
+                    properties: {
+                        email:    { type: 'string', format: 'email' },
+                        password: { type: 'string', minLength: 6 }
+                    }
+                }
+            }
+        },
+        async (req, reply) => {
+            const { email, password } = req.body as { email: string; password: string }
 
-    app.post('/auth/login', { /* schema */ }, async (req, reply) => {
-        const { email, password } = req.body as { email: string; password: string }
-        if (email === 'teste@itaagro.com' && password === '123456') {
-            const token = app.jwt.sign({ email })
+            const repo = AppDataSource.getRepository(User)
+            const user = await repo.findOneBy({ email })
+            if (!user) {
+                return reply.code(401).send({ message: 'Usuário inválido' })
+            }
 
-            reply
+            const match = await bcrypt.compare(password, user.password)
+            if (!match) {
+                return reply.code(401).send({ message: 'Credenciais inválidas' })
+            }
+
+            const token = app.jwt.sign(
+                { sub: user.id, email: user.email, role: user.role },
+                { expiresIn: '1d' }
+            )
+
+            return reply
                 .setCookie('itaagro_token', token, {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === 'production',
                     sameSite: 'lax',
-                    path: '/',               // cookie válido para toda a API
-                    maxAge: 60 * 60 * 24,     // 1 dia, em segundos
+                    path: '/',
+                    maxAge: 60 * 60 * 24
                 })
                 .code(200)
-                .send({ success: true })
-            return
+                .send({ success: true, role: user.role })
         }
-        reply.status(401).send({ message: 'Credenciais inválidas' })
-    })
+    )
 
-    // logout limpa o cookie
-    app.post('/auth/logout', async (_request, reply) => {
+    // 2) Logout — limpa o cookie
+    app.post('/logout', async (_req, reply) => {
         reply
-          .clearCookie('itaagro_token', {
-            path: '/',               // mesmo path usado na hora de setar o cookie
-            httpOnly: true,          // garante que é o mesmo cookie
-            sameSite: 'lax',
-          })
-          .code(200)
-          .send({ success: true })
-      })
-
-    // rota de checagem de sessão
-    app.get('/auth/me', { preHandler: [app.authenticate] }, async (req) => {
-        return { email: (req.user as any).email }
+            .clearCookie('itaagro_token', {
+                path:     '/',
+                httpOnly: true,
+                sameSite: 'lax'
+            })
+            .code(200)
+            .send({ success: true })
     })
 
-    app.post('/auth/recover', async (request, reply) => {
-        const { email } = request.body as { email: string }
+    // 3) Checa sessão — só acessível se o token for válido
+    app.get(
+        '/me',
+        { preHandler: [app.authenticate] },
+        async (req) => {
+            const user = req.user as { email: string; role: string }
+            return { email: user.email, role: user.role }
+        }
+    )
+
+    // 4) Recuperar senha (sem autenticação)
+    app.post('/recover', async (req, reply) => {
+        const { email } = req.body as { email: string }
         // TODO: enviar e-mail de recuperação
         return reply.send({ message: `Link de recuperação enviado para ${email}` })
-    });
+    })
 }

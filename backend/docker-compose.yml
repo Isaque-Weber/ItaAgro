@@ -7,3 +7,18 @@ services:
     ports:
       - "4000:4000"
     command: npm run dev
+
+  postgres:
+    image: postgres:15
+    container_name: itaagro-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
