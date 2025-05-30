@@ -2,7 +2,8 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 
 export function Signup() {
-    const hotmartUrl = import.meta.env.VITE_HOTMART_CHECKOUT_URL
+    // Próxima Sprint
+    // const mercadoPagoURL = import.meta.env.VITE_MERCADOPAGO_CHECKOUT_URL
 
     const handleSignup = () => {
         window.location.href = 'mercadopago.com'
