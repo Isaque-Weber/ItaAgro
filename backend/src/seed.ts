@@ -9,6 +9,11 @@ async function seed() {
     const dataSource = await AppDataSource.initialize()
     const repo = dataSource.getRepository(User)
 
+    if (process.env.NODE_ENV === 'production') {
+        console.log('Seed não deve ser executado em produção automaticamente')
+        process.exit(1)
+    }
+
     // 2) Função auxiliar pra criar ou atualizar um usuário
     async function upsertUser(email: string, rawPassword: string, role: 'admin' | 'user') {
         // tenta buscar pelo e-mail
