@@ -7,6 +7,7 @@ import { AppDataSource } from './services/typeorm/data-source'
 import authPlugin    from './plugins/auth'
 import { authRoutes }   from './controllers/auth'
 import { adminRoutes }  from './controllers/admin'
+import {chatRoutes} from "./controllers/chat";
 
 async function start() {
   await AppDataSource.initialize()
@@ -30,15 +31,8 @@ async function start() {
   // 4) Rotas de admin (já usam app.authenticate internamente)
   await app.register(adminRoutes, { prefix: '/admin' })
 
-  // 5) Stub de chat protegido (ainda inline, só pra validar)
-  app.post(
-      '/chat',
-      { preHandler: [app.authenticate] },
-      async (request) => {
-        const { prompt } = request.body as { prompt: string }
-        return { reply: `Eco: ${prompt}` }
-      }
-  )
+  // 5)Rota de chat
+    await app.register(chatRoutes, { prefix: '/chat' })
 
   // 6) Rota exemplo protegida
   app.get(

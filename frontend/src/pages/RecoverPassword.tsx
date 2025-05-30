@@ -1,4 +1,3 @@
-// frontend/src/pages/RecoverPassword.tsx
 import React from 'react'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
@@ -28,17 +27,17 @@ export function RecoverPassword() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4 transition-colors duration-300">
             <form
                 onSubmit={handleSubmit(onSubmit)}
-                className="max-w-sm w-full bg-white p-6 rounded-lg shadow"
+                className="max-w-sm w-full bg-white dark:bg-gray-800 dark:text-white p-6 rounded-lg shadow dark:shadow-lg"
             >
                 <h1 className="text-2xl font-semibold mb-6 text-center">
                     Recuperar Senha
                 </h1>
 
                 <div className="mb-6">
-                    <label className="block text-gray-700 mb-1">E-mail</label>
+                    <label className="block text-gray-700 dark:text-gray-200 mb-1">E-mail</label>
                     <input
                         type="email"
                         {...register('email', {
@@ -48,8 +47,7 @@ export function RecoverPassword() {
                                 message: 'Formato de e-mail inválido',
                             },
                         })}
-                        className={`w-full px-3 py-2 border rounded focus:outline-none ${errors.email ? 'border-red-500' : 'border-gray-300'
-                            }`}
+                        className={`w-full px-3 py-2 border rounded focus:outline-none dark:bg-gray-700 dark:text-white dark:border-gray-600 ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                     />
                     {errors.email && (
                         <p className="text-red-500 text-sm mt-1">
@@ -67,7 +65,7 @@ export function RecoverPassword() {
                 </button>
 
                 <div className="text-center text-sm">
-                    <Link to="/login" className="text-green-600 hover:underline">
+                    <Link to="/login" className="text-green-600 hover:underline dark:text-green-400">
                         Voltar ao login
                     </Link>
                 </div>

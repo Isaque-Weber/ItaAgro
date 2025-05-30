@@ -5,7 +5,7 @@ import {
     CreateDateColumn,
     ManyToOne,
     OneToMany,
-    JoinColumn
+    JoinColumn, Column
 } from 'typeorm'
 import { User } from './User'
 import { ChatMessage } from './ChatMessage'
@@ -24,4 +24,13 @@ export class ChatSession {
 
     @OneToMany(() => ChatMessage, m => m.session)
     messages!: ChatMessage[]
+
+    @Column('text')
+    assistantId!: string;
+
+    @CreateDateColumn()
+    createdAt!: Date
+
+    @Column('text')
+    threadId!: string
 }

@@ -21,6 +21,7 @@
     "@fastify/jwt": "^9.1.0",
     "bcrypt": "^6.0.0",
     "fastify": "^5.3.2",
+    "openai": "^4.103.0",
     "pg": "^8.16.0",
     "reflect-metadata": "^0.2.2",
     "tsx": "^4.19.4",

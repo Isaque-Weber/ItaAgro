@@ -1,6 +1,7 @@
 // frontend/src/App.tsx
 import React, { useState, useEffect } from 'react'
 import {AppRoutes} from "./routes";
+import { DarkModeToggle } from './components/DarkModeToggle'
 
 export function App() {
   // null = ainda carregando, true/false = estado de auth
@@ -37,18 +38,21 @@ export function App() {
     )
   }
 
-  return (
-      <AppRoutes
-          isAuth={isAuth}
-          userRole={userRole}
-          onLogin={() => setIsAuth(true)}
-          setUserRole={setUserRole}
-          onLogout={() => {
-              // opcional: chamar /auth/logout antes de limpar
-              setIsAuth(false)
-              setUserRole(null)
-          }}
-      />
+    return (
+        <>
+            <AppRoutes
+                isAuth={isAuth}
+                userRole={userRole}
+                onLogin={() => setIsAuth(true)}
+                setUserRole={setUserRole}
+                onLogout={() => {
+                    setIsAuth(false)
+                    setUserRole(null)
+                }}
+            />
 
-  )
+            {/* Botão flutuante de DarkMode em todas as páginas */}
+            <DarkModeToggle />
+        </>
+    )
 }

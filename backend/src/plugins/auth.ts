@@ -23,6 +23,8 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
         async (request, reply) => {
             try {
                 await request.jwtVerify()
+                request.user = request.user || (request as any).jwtPayload
+
             } catch {
                 reply.code(401).send({ error: 'Unauthorized' })
             }
