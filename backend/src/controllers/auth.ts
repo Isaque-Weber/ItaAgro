@@ -43,10 +43,10 @@ export async function authRoutes(app: FastifyInstance) {
             return reply
                 .setCookie('itaagro_token', token, {
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'lax',
+                    secure: true,
+                    sameSite: 'none',
                     path: '/',
-                    maxAge: 60 * 60 * 24
+                    maxAge: 60 * 60 * 24 // 1 dia
                 })
                 .code(200)
                 .send({ success: true, role: user.role })
