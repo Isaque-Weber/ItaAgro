@@ -14,14 +14,21 @@ export function App() {
             credentials: 'include',
         })
             .then(async res => {
-                if (res.ok) {
-                    const data = await res.json()     // { email, role }
-                    setIsAuth(true)
-                    setUserRole(data.role)
-                } else {
+                if (!res.ok) {
                     setIsAuth(false)
                     setUserRole(null)
+                    return
                 }
+
+                const data = await res.json()
+                if (!data?.role) {
+                    setIsAuth(false)
+                    setUserRole(null)
+                    return
+                }
+
+                setIsAuth(true)
+                setUserRole(data.role)
             })
             .catch(() => {
                 setIsAuth(false)
