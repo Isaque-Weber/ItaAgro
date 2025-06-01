@@ -17,9 +17,10 @@ async function start() {
 
   // 1) CORS (precisa de credentials para enviar cookies HttpOnly)
   await app.register(cors, {
-    origin: process.env.NODE_ENV === 'production'
-        ? 'https://itaagro.up.railway.app'
-        : 'http://localhost:5173',
+    origin: [
+      'http://localhost:5173',
+      'https://itaagro.up.railway.app' // ← necessário no deploy
+    ],
     credentials: true,
     methods: ['GET','POST','PUT','DELETE','OPTIONS']
   })

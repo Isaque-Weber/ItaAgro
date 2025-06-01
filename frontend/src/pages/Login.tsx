@@ -39,7 +39,7 @@ export function Login({ onLogin, setUserRole }: LoginProps) {
             })
 
             const meBody = await meRes.json().catch(() => null)
-            if (meRes.ok) {
+            if (meRes.ok && meBody?.role) {
                 setUserRole(meBody.role)
                 onLogin()
                 navigate('/')
