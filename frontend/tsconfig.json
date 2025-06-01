@@ -1,5 +1,4 @@
 {
-    "extends": "../tsconfig.json", // herda configurações do monorepo
     "compilerOptions": {
         "target": "ESNext",
         "module": "ESNext",
@@ -10,12 +9,12 @@
         "skipLibCheck": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
-        "types": [
-            "vite/client"
-        ] // carrega automaticamente o vite-env.d.ts
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "types": ["vite/client"]
     },
     "include": [
-        "src", // seu código React/TSX
-        "vite-env.d.ts" // declarações para import.meta.env
+        "src",
+        "vite-env.d.ts"
     ]
 }
