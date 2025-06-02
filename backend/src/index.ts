@@ -55,9 +55,9 @@ async function start() {
   await app.listen({ port })
   app.log.info(`Servidor rodando em http://localhost:${port}`)
 
-  app.get('/health', async (req, res) => {
-    return { status: 'ok', uptime: process.uptime() }
-  })
+  // app.get('/health', async (req, res) => {
+  //   return { status: 'ok', uptime: process.uptime() }
+  // })
 
 }
 
