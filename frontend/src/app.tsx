@@ -14,43 +14,47 @@ export function App() {
             credentials: 'include',
         })
             .then(async res => {
-                // if(res.ok) {
-                //     try {
-                //         const data = await res.json()
-                //         if (data && data.role) {
-                //             setIsAuth(true)
-                //             setUserRole(data.role)
-                //         } else {
-                //             setIsAuth(false)
-                //             setUserRole(null)
-                //         }
-                //
-                //     } catch (e) {
-                //         console.error('Erro ao fazer parse do JSON', e)
-                //         setIsAuth(false)
-                //         setUserRole(null)
-                //     }
-                // } else {
+                const API_URL = import.meta.env.VITE_API_BASE_URL
+                if (!API_URL) {
+                    console.error('⚠️ VITE_API_BASE_URL não definida!')
+                }
+                if(res.ok) {
+                    try {
+                        const data = await res.json()
+                        if (data && data.role) {
+                            setIsAuth(true)
+                            setUserRole(data.role)
+                        } else {
+                            setIsAuth(false)
+                            setUserRole(null)
+                        }
+
+                    } catch (e) {
+                        console.error('Erro ao fazer parse do JSON', e)
+                        setIsAuth(false)
+                        setUserRole(null)
+                    }
+                } else {
+                    setIsAuth(false)
+                    setUserRole(null)
+                }
+
+                // if (!res.ok) {
+                //     console.error('Erro ao fazer o parse do JSON',Error)
                 //     setIsAuth(false)
                 //     setUserRole(null)
+                //     return
                 // }
-
-                if (!res.ok) {
-                    console.error('Erro ao fazer o parse do JSON',Error)
-                    setIsAuth(false)
-                    setUserRole(null)
-                    return
-                }
-
-                const data = await res.json()
-                if (!data?.role) {
-                    setIsAuth(false)
-                    setUserRole(null)
-                    return
-                }
-
-                setIsAuth(true)
-                setUserRole(data.role)
+                //
+                // const data = await res.json()
+                // if (!data?.role) {
+                //     setIsAuth(false)
+                //     setUserRole(null)
+                //     return
+                // }
+                //
+                // setIsAuth(true)
+                // setUserRole(data.role)
             })
             .catch(err => {
                 console.error('Erro na requisição /auth/me:', err);
