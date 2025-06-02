@@ -14,23 +14,45 @@ export function App() {
             credentials: 'include',
         })
             .then(async res => {
-                if (!res.ok) {
+                if(res.ok) {
+                    try {
+                        const data = await res.json()
+                        if (data && data.role) {
+                            setIsAuth(true)
+                            setUserRole(data.role)
+                        } else {
+                            setIsAuth(false)
+                            setUserRole(null)
+                        }
+
+                    } catch (e) {
+                        console.error('Erro ao fazer parse do JSON', e)
+                        setIsAuth(false)
+                        setUserRole(null)
+                    }
+                } else {
                     setIsAuth(false)
                     setUserRole(null)
-                    return
                 }
-
-                const data = await res.json()
-                if (!data?.role) {
-                    setIsAuth(false)
-                    setUserRole(null)
-                    return
-                }
-
-                setIsAuth(true)
-                setUserRole(data.role)
+            //
+            //     if (!res.ok) {
+            //         setIsAuth(false)
+            //         setUserRole(null)
+            //         return
+            //     }
+            //
+            //     const data = await res.json()
+            //     if (!data?.role) {
+            //         setIsAuth(false)
+            //         setUserRole(null)
+            //         return
+            //     }
+            //
+            //     setIsAuth(true)
+            //     setUserRole(data.role)
             })
-            .catch(() => {
+            .catch(err => {
+                console.error('Erro na requisição /auth/me:', err);
                 setIsAuth(false)
                 setUserRole(null)
             })
