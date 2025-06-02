@@ -20,7 +20,7 @@ async function start() {
     origin: (origin, cb) => {
       const allowedOrigins = [
         'http://localhost:5173',
-        'https://itaagro.up.railway.app'
+        'https://itaback-production.up.railway.app'
       ]
       if (!origin || allowedOrigins.includes(origin)) {
         cb(null, true)
@@ -54,7 +54,14 @@ async function start() {
   const port = Number(process.env.PORT) || 4000
   await app.listen({ port })
   app.log.info(`Servidor rodando em http://localhost:${port}`)
+
+  app.get('/health', async (req, res) => {
+    return { status: 'ok', uptime: process.uptime() }
+  })
+
 }
+
+
 
 start().catch(err => {
   console.error(err)
