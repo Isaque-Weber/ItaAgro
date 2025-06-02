@@ -17,18 +17,19 @@ async function start() {
 
   // 1) CORS (precisa de credentials para enviar cookies HttpOnly)
   await app.register(cors, {
-    origin: (origin, cb) => {
-      const allowedOrigins = [
-        'http://localhost:5173',
-        'http://localhost:4173',
-        'https://itaagro.up.railway.app'
-      ]
-      if (!origin || allowedOrigins.includes(origin)) {
-        cb(null, true)
-      } else {
-        cb(new Error("Not allowed"), false)
-      }
-    },
+    // origin: (origin, cb) => {
+    //   const allowedOrigins = [
+    //     'http://localhost:5173',
+    //     'http://localhost:4173',
+    //     'https://itaagro.up.railway.app'
+    //   ]
+    //   if (!origin || allowedOrigins.includes(origin)) {
+    //     cb(null, true)
+    //   } else {
+    //     cb(new Error("Not allowed"), false)
+    //   }
+    // },
+    origin: true,
     credentials: true,
     methods: ['GET','POST','PUT','DELETE','OPTIONS']
   })
