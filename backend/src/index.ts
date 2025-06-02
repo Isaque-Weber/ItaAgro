@@ -52,7 +52,7 @@ async function start() {
   )
 
   const port = Number(process.env.PORT) || 4000
-  await app.listen({ port })
+  await app.listen({ port, host: '0.0.0.0' })
   app.log.info(`Servidor rodando em http://localhost:${port}`)
 
   // app.get('/health', async (req, res) => {
@@ -64,6 +64,6 @@ async function start() {
 
 
 start().catch(err => {
-  console.error(err)
+  console.error('Erro ao iniciar o servidor Fastify:', err)
   process.exit(1)
 })
