@@ -20,7 +20,7 @@ async function start() {
     origin: (origin, cb) => {
       const allowedOrigins = [
         'http://localhost:5173',
-        'https://itaback-production.up.railway.app'
+        'https://itaagro.up.railway.app'
       ]
       if (!origin || allowedOrigins.includes(origin)) {
         cb(null, true)
