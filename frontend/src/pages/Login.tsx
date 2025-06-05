@@ -1,6 +1,7 @@
 // frontend/src/pages/Login.tsx
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import logoImg from '../assets/logo-removebg-preview.png'
 
 interface LoginProps {
     onLogin: () => void
@@ -58,6 +59,9 @@ export function Login({ onLogin, setUserRole }: LoginProps) {
                 onSubmit={handleSubmit}
                 className="max-w-sm w-full bg-white dark:bg-gray-800 dark:text-white p-6 rounded-lg shadow dark:shadow-lg"
             >
+                <div className="flex justify-center mb-4">
+                    <img src={logoImg} alt="ItaAgro Logo" className="h-40 mx-auto" style={{ filter: 'drop-shadow(0 0 25px #0008)' }} />
+                </div>
                 <h1 className="text-2xl font-semibold mb-6 text-center">Login</h1>
 
                 <div className="mb-4">
