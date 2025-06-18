@@ -40,16 +40,30 @@ export async function authRoutes(app: FastifyInstance) {
                 { expiresIn: '1d' }
             )
 
+            // Log para debug
+            console.log('Token gerado:', token)
+
+            // Configuração do cookie
+            const cookieOptions = {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'none' as const,
+                path: '/',
+                maxAge: 60 * 60 * 24 // 1 dia
+            };
+
+            console.log('Configuração do cookie:', cookieOptions);
+
             return reply
-                .setCookie('itaagro_token', token, {
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: 'none',
-                    path: '/',
-                    maxAge: 60 * 60 * 24 // 1 dia
-                })
+                .setCookie('itaagro_token', token, cookieOptions)
+                .header('Authorization', `Bearer ${token}`) // Adiciona o token no header também
                 .code(200)
-                .send({ success: true, role: user.role })
+                .send({ 
+                    success: true, 
+                    role: user.role, 
+                    token, // Incluir token na resposta para debug
+                    cookieSet: true // Indicador que o cookie foi definido
+                })
         }
     )
 
@@ -59,7 +73,8 @@ export async function authRoutes(app: FastifyInstance) {
             .clearCookie('itaagro_token', {
                 path:     '/',
                 httpOnly: true,
-                sameSite: 'lax'
+                secure: true,
+                sameSite: 'none'
             })
             .code(200)
             .send({ success: true })

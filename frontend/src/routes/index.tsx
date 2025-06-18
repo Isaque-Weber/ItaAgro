@@ -7,6 +7,7 @@ import { Signup }          from '../pages/Signup'
 import { Dashboard }       from '../pages/Dashboard'
 import { Chat }            from '../pages/Chat'
 import { AdminDashboard }  from '../pages/AdminDashboard'
+import { SubscribePage }   from '../pages/SubscribePage'
 
 export interface AppRoutesProps {
     /** Chamada após um login bem-sucedido */
@@ -80,6 +81,16 @@ export function AppRoutes({
                 element={
                     isAuth
                         ? <Chat onLogout={onLogout} />
+                        : <Navigate to="/login" replace />
+                }
+            />
+
+            {/** Página de Assinatura */}
+            <Route
+                path="/subscribe"
+                element={
+                    isAuth
+                        ? <SubscribePage onLogout={onLogout} />
                         : <Navigate to="/login" replace />
                 }
             />

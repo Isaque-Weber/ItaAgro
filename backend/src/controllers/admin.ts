@@ -61,7 +61,8 @@ export async function adminRoutes(app: FastifyInstance) {
                 type: 'object',
                 properties: {
                     email:    { type: 'string', format: 'email' },
-                    password: { type: 'string', enum: ['user', 'admin'] }
+                    password: { type: 'string', minLength: 6 },
+                    role:     { type: 'string', enum: ['user', 'admin'] }
                 }
             }
         }
@@ -112,24 +113,44 @@ export async function adminRoutes(app: FastifyInstance) {
                 type: 'object',
                 required: ['user_id', 'status', 'plan'],
                 properties: {
-                    userId: { type: 'string', format: 'uuid' },
-                    status: { type: 'string', enum: ['active', 'pending', 'canceled']}
+                    user_id: { type: 'string', format: 'uuid' },
+                    status: { type: 'string', enum: ['active', 'pending', 'canceled', 'authorized']},
+                    plan: { type: 'string' }
                 }
             }
         }
     },
         async (req, reply) => {
-        const { userid, status } = req.body as any
-            const s = subRepo.create({ user: {id: userid } as any, status })
+        const { user_id, status, plan } = req.body as any
+            const s = subRepo.create({ 
+                user: {id: user_id } as any, 
+                status,
+                plan
+            })
             await subRepo.save(s)
             return reply.code(201).send(s)
         })
 
-    app.put('/subscription/:id', { preHandler: [app.authenticate, checkAdmin] },
+    app.put('/subscription/:id', { 
+        preHandler: [app.authenticate, checkAdmin],
+        schema: {
+            body: {
+                type: 'object',
+                properties: {
+                    status: { type: 'string', enum: ['active', 'pending', 'canceled', 'authorized'] },
+                    plan: { type: 'string' },
+                    expiresAt: { type: 'string', format: 'date-time' }
+                }
+            }
+        }
+    },
         async (req, reply) => {
             const id = (req.params as any).id
             await subRepo.update(id, req.body as any)
-            const s = await subRepo.findOneBy({ id })
+            const s = await subRepo.findOne({
+                where: { id },
+                relations: ['user']
+            })
             if (!s) return reply.code(404).send({ error: 'Assinatura não existe' })
             return s
         })
