@@ -19,7 +19,7 @@ export const AppDataSource = new DataSource({
         ChatSession,
         ChatMessage,
     ],
-    migrations: [ 'src/services/typeorm/migrations/*.ts' ],
+    migrations: [ process.env.NODE_ENV === 'production' ? 'dist/src/services/typeorm/migrations/*.js' : 'src/services/typeorm/migrations/*.ts' ],
 })
 
 AppDataSource.initialize()
