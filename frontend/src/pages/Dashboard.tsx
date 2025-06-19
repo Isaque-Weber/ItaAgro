@@ -51,24 +51,39 @@ export function Dashboard({ onLogout, userRole }: DashboardProps) {
                     ))}
                 </div>
 
-                {userRole === 'admin' && (
-                    <div className="mt-8">
+                <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                    <button
+                        onClick={() => navigate('/subscribe')}
+                        className="
+                            px-6 py-3
+                            bg-[#1976d2] text-white
+                            rounded-lg
+                            font-medium text-lg
+                            hover:bg-[#1565c0]
+                            transition duration-200 shadow-md
+                            dark:bg-blue-700 dark:hover:bg-blue-600
+                        "
+                    >
+                        Ver Planos de Assinatura
+                    </button>
+
+                    {userRole === 'admin' && (
                         <button
                             onClick={() => navigate('/admin')}
                             className="
-                px-6 py-3
-                bg-[#43a047] text-white
-                rounded-lg
-                font-medium text-lg
-                hover:bg-[#388e3c]
-                transition duration-200 shadow-md
-                dark:bg-green-700 dark:hover:bg-green-600
-              "
+                                px-6 py-3
+                                bg-[#43a047] text-white
+                                rounded-lg
+                                font-medium text-lg
+                                hover:bg-[#388e3c]
+                                transition duration-200 shadow-md
+                                dark:bg-green-700 dark:hover:bg-green-600
+                            "
                         >
                             Ir para Painel Admin
                         </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </main>
         </div>
     )

@@ -10,8 +10,19 @@ export function App() {
 
   // Na montagem, verifica a sessão no backend
     useEffect(() => {
+        // Tenta obter o token do localStorage (se tiver sido salvo no login)
+        const token = localStorage.getItem('auth_token')
+
+        // Prepara os headers para a requisição
+        const headers: HeadersInit = {}
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`
+            console.log('Token encontrado no localStorage, incluindo no header')
+        }
+
         fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
             credentials: 'include',
+            headers
         })
             .then(async res => {
                 console.log('🌐 API URL:', import.meta.env.VITE_API_BASE_URL)
@@ -20,9 +31,14 @@ export function App() {
                 if (!API_URL) {
                     console.error('⚠️ VITE_API_BASE_URL não definida!')
                 }
+
+                console.log('Status da resposta /auth/me:', res.status)
+
                 if(res.ok) {
                     try {
                         const data = await res.json()
+                        console.log('Dados recebidos de /auth/me:', data)
+
                         if (data && data.role) {
                             setIsAuth(true)
                             setUserRole(data.role)
@@ -37,6 +53,7 @@ export function App() {
                         setUserRole(null)
                     }
                 } else {
+                    console.error('Erro na requisição /auth/me:', res.status)
                     setIsAuth(false)
                     setUserRole(null)
                 }

@@ -35,16 +35,30 @@ export function Login({ onLogin, setUserRole }: LoginProps) {
                 return
             }
 
+            // Salva o token no localStorage para uso posterior
+            if (resBody && resBody.token) {
+                localStorage.setItem('auth_token', resBody.token)
+                console.log('Token salvo no localStorage')
+            }
+
             const meRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
                 credentials: 'include',
+                headers: resBody && resBody.token 
+                    ? { 'Authorization': `Bearer ${resBody.token}` } 
+                    : undefined
             })
 
+            console.log('Status da resposta /auth/me após login:', meRes.status)
+
             const meBody = await meRes.json().catch(() => null)
+            console.log('Resposta de /auth/me após login:', meBody)
+
             if (meRes.ok && meBody?.role) {
                 setUserRole(meBody.role)
                 onLogin()
                 navigate('/')
             } else {
+                console.error('Erro na requisição /auth/me após login:', meRes.status, meBody)
                 setError(meBody?.message || 'Erro ao obter informações do usuário')
             }
         } catch (err) {

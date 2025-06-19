@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import { User } from '../../entities/User'
@@ -18,5 +19,13 @@ export const AppDataSource = new DataSource({
         ChatSession,
         ChatMessage,
     ],
-    // migrations: [ 'src/services/typeorm/migrations/*.ts' ],
+    migrations: [ 'src/services/typeorm/migrations/*.ts' ],
 })
+
+AppDataSource.initialize()
+  .then(() => {
+    console.log('Conexão com o banco de dados estabelecida com sucesso!')
+  })
+  .catch((error) => {
+    console.error('Erro ao conectar no banco de dados:', error)
+  })
