@@ -25,7 +25,7 @@ interface ProductFilter {
  */
 export class AgrofitService {
     private apiClient: AxiosInstance;
-    private baseURL = 'https://agroapi.embrapa.br/v1';
+    private baseURL = 'https://api.cnptia.embrapa.br/agrofit/v1';
     private requestsThisMonth = 0;
     private requestLimit = 100000; // Limite do plano gratuito
 
@@ -147,6 +147,16 @@ export class AgrofitService {
         } catch (error) {
             console.error('Erro ao buscar ingredientes ativos:', error);
             throw error;
+        }
+    }
+
+    async simpleGet(path: string) {
+        try {
+            const response = await this.apiClient.get(path)
+            return response.data
+        } catch (error) {
+            console.error(`Erro ao acessar ${path}:`, error)
+            throw error
         }
     }
 

@@ -1,4 +1,4 @@
-// backend/src/plugins/auth.ts
+// backend/src/plugins/auth.plugin.ts
 import fp from 'fastify-plugin'
 import fastifyCookie from '@fastify/cookie'
 import fastifyJwt    from '@fastify/jwt'

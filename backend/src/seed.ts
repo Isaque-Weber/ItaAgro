@@ -15,17 +15,18 @@ async function seed() {
     }
 
     // 2) Função auxiliar pra criar ou atualizar um usuário
-    async function upsertUser(email: string, rawPassword: string, role: 'admin' | 'user') {
+    async function upsertUser(email: string, rawPassword: string, role: 'admin' | 'user', name: string) {
         // tenta buscar pelo e-mail
         let user = await repo.findOneBy({ email })
 
         if (!user) {
             // cria um novo (vai disparar @BeforeInsert)
-            user = repo.create({ email, password: rawPassword, role })
+            user = repo.create({ email, password: rawPassword, role, name })
         } else {
-            // já existe → atualiza a senha (vai disparar @BeforeUpdate)
+            // já existe → atualiza a senha e o nome (vai disparar @BeforeUpdate)
             user.password = rawPassword
             user.role     = role
+            user.name     = name
         }
 
         // salva no banco (insert ou update conforme o caso)
@@ -34,8 +35,8 @@ async function seed() {
     }
 
     // 3) Seed dos dois usuários
-    await upsertUser('admin@itaagro.com', 'itapass', 'admin')
-    await upsertUser('user@itaagro.com',   'itauser', 'user')
+    await upsertUser('admin@itaagro.com', 'itapass', 'admin', 'Administrador')
+    await upsertUser('user@itaagro.com',   'itauser', 'user', 'Usuário Padrão')
 
     console.log('Seed completo')
     await dataSource.destroy()

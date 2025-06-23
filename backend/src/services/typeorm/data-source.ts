@@ -9,7 +9,7 @@ import { ChatMessage } from '../../entities/ChatMessage'
 export const AppDataSource = new DataSource({
     type:     'postgres',
     url:      process.env.DATABASE_URL,
-    synchronize: false,   // em dev true, em prod deixe false e use migrations
+    synchronize: true,   // em dev true, em prod deixe false e use migrations
     dropSchema: false,
     logging:    false,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,

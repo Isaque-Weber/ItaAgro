@@ -1,7 +1,8 @@
-//backend/src/services/openai/processMessageWithAssistant.ts
 import { openai } from './openai'
-import { FastifyReply } from "fastify";
-import { WeatherTool } from '../weather/weatherTool';
+import { WeatherTool } from '../weather/weatherTool'
+import { AgrofitTool } from '../agrofit/agrofitTool'
+
+const agrofitTool = new AgrofitTool()
 
 export async function processMessageWithAssistant(
     threadId: string,
@@ -9,70 +10,76 @@ export async function processMessageWithAssistant(
     content: string,
     temperature: number,
 ): Promise<string> {
+    // console.log('📩 Nova mensagem recebida do usuário:', content)
+
     await openai.beta.threads.messages.create(threadId, {
         role: 'user',
         content,
     })
+    console.log('📨 Mensagem registrada na thread:', threadId)
 
     const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId,
         temperature,
         max_completion_tokens: 1000,
     })
+    console.log('⚙️ Run iniciado com ID:', run.id)
 
     let status = run.status
     let runResult = run
 
-    // Inicializa as ferramentas
-    const weatherTool = new WeatherTool();
+    const weatherTool = new WeatherTool()
 
-    // Loop para processar o run e lidar com chamadas de ferramentas
     while (status !== 'completed' && status !== 'failed' && status !== 'cancelled') {
         await new Promise((resolve) => setTimeout(resolve, 1000))
         runResult = await openai.beta.threads.runs.retrieve(threadId, run.id)
         status = runResult.status
+        console.log('🔄 Status do run:', status)
 
-        // Verifica se há chamadas de ferramentas pendentes
         if (status === 'requires_action' && runResult.required_action?.type === 'submit_tool_outputs') {
-            const toolCalls = runResult.required_action.submit_tool_outputs.tool_calls;
-            const toolOutputs = [];
+            const toolCalls = runResult.required_action.submit_tool_outputs.tool_calls
+            console.log('🧠 Agente solicitou uso de ferramentas:', toolCalls.map(t => t.function.name))
 
-            // Processa cada chamada de ferramenta
+            const toolOutputs = []
+
             for (const toolCall of toolCalls) {
-                const functionName = toolCall.function.name;
-                let functionResponse;
+                const functionName = toolCall.function.name
+                let functionResponse
 
                 try {
-                    // Parse dos argumentos da função
-                    const args = JSON.parse(toolCall.function.arguments);
-                    console.log(`Chamada de ferramenta: ${functionName}`, args);
+                    const args = JSON.parse(toolCall.function.arguments)
+                    console.log(`🔧 Executando ferramenta ${functionName} com argumentos:`, args)
 
-                    // Direciona para a ferramenta apropriada
                     if (functionName === 'get_weather') {
-                        functionResponse = await weatherTool.handleFunctionCall(functionName, args);
+                        functionResponse = await weatherTool.handleFunctionCall(functionName, args)
+                    } else if (functionName === 'get_product_info') {
+                        functionResponse = await agrofitTool.handleFunctionCall(functionName, args)
                     } else {
-                        functionResponse = { error: `Ferramenta não suportada: ${functionName}` };
+                        functionResponse = { error: `Ferramenta não suportada: ${functionName}` }
                     }
+
+                    console.log(`✅ Resposta da ferramenta ${functionName}:`, functionResponse)
+
                 } catch (error) {
-                    console.error(`Erro ao processar chamada de ferramenta ${functionName}:`, error);
-                    functionResponse = { error: `Erro ao processar ferramenta: ${error}` };
+                    console.error(`❌ Erro na ferramenta ${functionName}:`, error)
+                    functionResponse = { error: `Erro ao processar ferramenta: ${error}` }
                 }
 
-                // Adiciona a resposta da ferramenta
                 toolOutputs.push({
                     tool_call_id: toolCall.id,
                     output: JSON.stringify(functionResponse)
-                });
+                })
             }
 
-            // Submete as respostas das ferramentas
             await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
                 tool_outputs: toolOutputs
-            });
+            })
+            console.log('📤 Respostas das ferramentas enviadas ao agente.')
         }
     }
 
     if (status !== 'completed') {
+        console.error('❗ Run não finalizado com sucesso:', status)
         throw new Error(`Run não finalizado com sucesso: ${status}`)
     }
 
@@ -83,5 +90,6 @@ export async function processMessageWithAssistant(
         ? (assistantMessage.content[0] as any).text.value
         : '[Resposta não textual ou vazia]'
 
+    console.log('💬 Resposta final do agente:', reply)
     return reply
 }
