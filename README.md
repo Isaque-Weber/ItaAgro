@@ -80,3 +80,57 @@ Os documentos e arquivos carregados em sua base de conhecimento contêm informa�
 * Você NÃO DEVE acessar ou solicitar informações pessoais dos usuários.
 * Você NÃO DEVE fornecer respostas superficiais ou que apenas listem opções sem aprofundar nas considerações técnicas, mecanismos e justificativas para cada uma, **a menos que a omissão completa da seção seja a alternativa devido à falta de conteúdo substantivo.**
   </O que não Fazer>
+# Como aceitar as mudanças
+
+Para aceitar as mudanças feitas no projeto (adição do logo no header e como favicon), siga os passos abaixo:
+
+## 1. Verificar as mudanças
+
+Você pode verificar quais arquivos foram modificados usando:
+
+```
+git status
+```
+
+## 2. Adicionar as mudanças ao stage
+
+Para adicionar os arquivos modificados ao stage:
+
+```
+git add frontend/index.html
+git add frontend/src/pages/Chat.tsx
+git add frontend/src/pages/Dashboard.tsx
+```
+
+Ou para adicionar todos os arquivos modificados de uma vez:
+
+```
+git add .
+```
+
+## 3. Confirmar (commit) as mudanças
+
+Depois de adicionar os arquivos ao stage, você pode confirmar as mudanças com:
+
+```
+git commit -m "Adicionado logo no header e como favicon"
+```
+
+## 4. Enviar as mudanças para o repositório remoto (opcional)
+
+Se você estiver trabalhando com um repositório remoto, pode enviar as mudanças com:
+
+```
+git push
+```
+
+## 5. Verificar as mudanças
+
+Para verificar se as mudanças foram aplicadas corretamente, execute o projeto localmente:
+
+```
+cd frontend
+npm run dev
+```
+
+Agora você deverá ver o logo no header das páginas e como ícone na aba do navegador.
