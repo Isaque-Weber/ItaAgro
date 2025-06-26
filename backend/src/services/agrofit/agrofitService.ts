@@ -1,10 +1,15 @@
-import axios, { AxiosInstance } from 'axios';
-import { AppDataSource } from '../typeorm/data-source';
-import { Product } from '../../entities/Product';
-import { Culture } from '../../entities/Culture';
-import { Pest } from '../../entities/Pest';
-import { Brand } from '../../entities/Brand';
-import { ActiveIngredient } from '../../entities/ActiveIngredient';
+import axios, { AxiosInstance } from 'axios'
+import { AppDataSource } from '../typeorm/data-source'
+import { Product } from '../../entities/Product'
+import { Culture } from '../../entities/Culture'
+import { Pest } from '../../entities/Pest'
+import { Brand } from '../../entities/Brand'
+import { ActiveIngredient } from '../../entities/ActiveIngredient'
+import dotenv from 'dotenv'
+import nodemailer from 'nodemailer'
+import { SearchResponse } from '../../../@types/agrofit';
+
+dotenv.config()
 
 /**
  * Interface para os filtros de busca de produtos
@@ -19,6 +24,10 @@ interface ProductFilter {
     page?: number;
     limit?: number;
 }
+/**
+ * Interface para a resposta de busca de produtos
+ */
+type ProductType = 'formulado' | 'tecnico'
 
 /**
  * Cliente para integração com a API Agrofit
@@ -28,46 +37,109 @@ export class AgrofitService {
     private baseURL = 'https://api.cnptia.embrapa.br/agrofit/v1';
     private requestsThisMonth = 0;
     private requestLimit = 100000; // Limite do plano gratuito
+    private alertThreshold: number
+    private mailer
 
     constructor() {
+
+        this.requestLimit = parseInt(process.env.AGROFIT_REQUEST_LIMIT || '100000', 10)
+        this.alertThreshold = Math.floor(this.requestLimit * 0.8)
+
         // Inicializa o cliente HTTP
         this.apiClient = axios.create({
-            baseURL: this.baseURL,
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
+            baseURL: process.env.AGROFIT_BASE_URL || 'https://api.cnptia.embrapa.br/agrofit/v1',
+            headers: { Authorization: `Bearer ${process.env.AGROFIT_ACCESS_TOKEN}` }
+        })
 
         // Interceptor para contagem de requisições
-        this.apiClient.interceptors.request.use((config) => {
+        this.apiClient.interceptors.request.use(async config => {
             this.requestsThisMonth++;
+            if (this.requestsThisMonth === this.alertThreshold) {
+                await this.sendAlertEmail('⚠️ Você atingiu 80% do limite mensal de requisições');
+            }
             if (this.requestsThisMonth > this.requestLimit) {
+                await this.sendAlertEmail('❌ Limite mensal de requisições excedido');
                 throw new Error('Limite mensal de requisições excedido');
             }
             return config;
+        })
+
+        // Configuração do transportador de email
+        this.mailer = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587', 10),
+            secure: false,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            }
+        })
+    }
+
+    private async sendAlertEmail(message: string) {
+        try {
+            await this.mailer.sendMail({
+                from: process.env.SMTP_FROM,
+                to: process.env.ALERT_EMAIL,
+                subject: message,
+                text: `AgrofitService: ${message}\nTotal de requisições no mês: ${this.requestsThisMonth}`
+            });
+            console.log('🚨 Alerta enviado:', message);
+        } catch (err) {
+            console.error('Erro ao enviar e‑mail de alerta:', err);
+        }
+    }
+
+    // Exemplo de obtenção de token via client credentials
+    async refreshToken() {
+        const url = process.env.TOKEN_URL!;
+        const data = new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: process.env.AGROFIT_CONSUMER_KEY!,
+            client_secret: process.env.AGROFIT_CONSUMER_SECRET!
         });
+        const resp = await axios.post(url, data.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const token = resp.data.access_token;
+        this.apiClient.defaults.headers.Authorization = `Bearer ${token}`;
+        process.env.AGROFIT_ACCESS_TOKEN = token;
+        console.log('🔄 Token renovado automaticamente');
     }
 
     /**
      * Busca produtos na API Agrofit com filtros
      */
-    async getProducts(filters: ProductFilter = {}) {
+    async getProducts(
+        filters: ProductFilter = {},
+        type: ProductType = 'formulado'
+    ) {
+        const endpointBase = type === 'formulado'
+            ? '/produtos-formulados'
+            : '/produtos-tecnicos';
+
+        const searchBase = `/search${endpointBase}`;
+
+        const { page = 1, limit = 20, name, culture, pest, brand, holder, activeIngredient } = filters;
+        const params: Record<string, any> = { page, limit };
+
+        if (name)             params.nome = name;
+        if (culture)          params.cultura = culture;
+        if (pest)             params.praga = pest;
+        if (brand)            params.marca = brand;
+        if (holder)           params.titular = holder;
+        if (activeIngredient) params.ingredienteAtivo = activeIngredient;
+
+        // Tenta busca simples primeiro, depois fallback via search
         try {
-            const { page = 1, limit = 20, ...queryFilters } = filters;
-            
-            const response = await this.apiClient.get('/produtos', {
-                params: {
-                    ...queryFilters,
-                    page,
-                    limit
-                }
-            });
-            
-            return response.data;
-        } catch (error) {
-            console.error('Erro ao buscar produtos:', error);
-            throw error;
+            const res = await this.apiClient.get<SearchResponse>(`${endpointBase}`, { params });
+            return res.data;
+        } catch (err) {
+            if ((err as any).response?.status === 404) {
+                const res2 = await this.apiClient.get<SearchResponse>(`${searchBase}`, { params });
+                return res2.data;
+            }
+            throw err;
         }
     }
 
@@ -116,7 +188,7 @@ export class AgrofitService {
      */
     async getBrands(page: number = 1, limit: number = 20) {
         try {
-            const response = await this.apiClient.get('/marcas', {
+            const response = await this.apiClient.get('/marcas-comerciais', {
                 params: {
                     page,
                     limit

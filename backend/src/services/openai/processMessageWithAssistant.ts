@@ -4,14 +4,18 @@ import { AgrofitTool } from '../agrofit/agrofitTool'
 
 const agrofitTool = new AgrofitTool()
 
+// Limita o tamanho das saídas das ferramentas para evitar erros >1MB
+function safeOutput(str: string): string {
+    const MAX = 200_000
+    return str.length > MAX ? str.slice(0, MAX) : str
+}
+
 export async function processMessageWithAssistant(
     threadId: string,
     assistantId: string,
     content: string,
     temperature: number,
 ): Promise<string> {
-    // console.log('📩 Nova mensagem recebida do usuário:', content)
-
     await openai.beta.threads.messages.create(threadId, {
         role: 'user',
         content,
@@ -40,7 +44,7 @@ export async function processMessageWithAssistant(
             const toolCalls = runResult.required_action.submit_tool_outputs.tool_calls
             console.log('🧠 Agente solicitou uso de ferramentas:', toolCalls.map(t => t.function.name))
 
-            const toolOutputs = []
+            const toolOutputs: {tool_call_id: string, output: string}[] = []
 
             for (const toolCall of toolCalls) {
                 const functionName = toolCall.function.name
@@ -59,15 +63,15 @@ export async function processMessageWithAssistant(
                     }
 
                     console.log(`✅ Resposta da ferramenta ${functionName}:`, functionResponse)
-
                 } catch (error) {
                     console.error(`❌ Erro na ferramenta ${functionName}:`, error)
                     functionResponse = { error: `Erro ao processar ferramenta: ${error}` }
                 }
 
+                // Usa safeOutput para não ultrapassar 1MB
                 toolOutputs.push({
                     tool_call_id: toolCall.id,
-                    output: JSON.stringify(functionResponse)
+                    output: safeOutput(JSON.stringify(functionResponse))
                 })
             }
 
@@ -75,6 +79,18 @@ export async function processMessageWithAssistant(
                 tool_outputs: toolOutputs
             })
             console.log('📤 Respostas das ferramentas enviadas ao agente.')
+
+            // Aguarda o run terminar antes de seguir
+            let finalRun = await openai.beta.threads.runs.retrieve(threadId, run.id)
+            while (
+                finalRun.status === 'in_progress' ||
+                finalRun.status === 'requires_action' ||
+                finalRun.status === 'queued'
+                ) {
+                await new Promise(r => setTimeout(r, 500))
+                finalRun = await openai.beta.threads.runs.retrieve(threadId, run.id)
+            }
+            console.log('✅ Run finalizado com status:', finalRun.status)
         }
     }
 

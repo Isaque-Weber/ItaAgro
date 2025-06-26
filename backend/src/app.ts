@@ -47,8 +47,32 @@ export async function build(): Promise<FastifyInstance> {
   // 4) Admin routes (already use app.authenticate internally)
   await app.register(adminRoutes, { prefix: '/admin' });
 
-  // 5) Chat routes
-  await app.register(chatRoutes, { prefix: '/chat' });
+  // 5) Chat routes — só usuários assinantes ou admin entram
+  await app.register(async fb => {
+    // Hook roda antes de qualquer handler dentro de /chat
+    fb.addHook('preHandler', async (req, reply) => {
+      const user = req.user as any;
+      // Admin ignora a verificação de assinatura
+      if (user.role === 'admin') return;
+
+      // Checa status de assinatura
+      const statusRes = await fb.inject({
+        method: 'GET',
+        url: '/api/subscription/status',
+        headers: { cookie: req.headers.cookie! }
+      });
+      const { subscribed } = statusRes.json() as { subscribed: boolean };
+
+      if (!subscribed) {
+        return reply.code(403).send({
+          error: 'Você precisa assinar antes de acessar o chat.'
+        });
+      }
+    });
+
+    // Depois do hook, registramos as rotas normais de chat
+    await fb.register(chatRoutes, { prefix: '' });
+  }, { prefix: '/chat' });
 
   // 6) Webhook routes (no authentication)
   await app.register(webhookRoutes, { prefix: '/webhook' });

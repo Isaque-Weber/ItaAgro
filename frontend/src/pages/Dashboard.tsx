@@ -1,5 +1,7 @@
+// frontend/src/pages/dashboard.tsx
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import logoImg from '../assets/logo.png'
 
 interface DashboardProps {
     onLogout: () => void
@@ -18,8 +20,11 @@ export function Dashboard({ onLogout, userRole }: DashboardProps) {
     return (
         <div className="flex flex-col min-h-screen bg-[#f1fdf5] dark:bg-gray-900">
             {/* Header */}
-            <header className="bg-[#2e7d32] text-white p-5 flex justify-between items-center shadow">
-                <h1 className="text-2xl font-bold tracking-wide">🌱 Ita Agro • Atendimento</h1>
+            <header className="text-gray-800 dark:text-white p-5 flex justify-between items-center shadow">
+                <div className="flex items-center">
+                    <img src={logoImg} alt="ItaAgro Logo" className="h-8 mr-3 dark:invert" />
+                    <h1 className="text-2xl font-bold tracking-wide">Ita Agro • Atendimento</h1>
+                </div>
                 <button
                     onClick={onLogout}
                     className="text-sm underline hover:text-green-200 transition"

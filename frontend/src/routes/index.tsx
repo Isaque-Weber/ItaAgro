@@ -4,10 +4,12 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Login }           from '../pages/Login'
 import { RecoverPassword } from '../pages/RecoverPassword'
 import { Signup }          from '../pages/Signup'
-import { Dashboard }       from '../pages/Dashboard'
 import { Chat }            from '../pages/Chat'
 import { AdminDashboard }  from '../pages/AdminDashboard'
+import DashboardUsers from "../pages/DashboardUsers";
 import { SubscribePage }   from '../pages/SubscribePage'
+import { SuccessPage }   from '../pages/SuccessPage'
+import {ProtectedRoute} from "../components/ProtectedRoute";
 
 export interface AppRoutesProps {
     /** Chamada após um login bem-sucedido */
@@ -30,19 +32,17 @@ export function AppRoutes({
                               onLogout,
                               isAuth,
                               setUserRole,
-                              userRole
+                              userRole,
                           }: AppRoutesProps): ReactElement {
     return (
         <Routes>
-            {/** Rota raiz — Dashboard */}
+            {/** Rota raiz — Chat */}
             <Route
                 path="/"
                 element={
-                    isAuth && userRole ? (
-                        <Dashboard onLogout={onLogout} userRole={userRole} />
-                    ) : (
-                        <Navigate to="/login" replace />
-                    )
+                    isAuth && userRole
+                        ? <Navigate to="/chat" replace />
+                        : <Navigate to="/login" replace />
                 }
             />
 
@@ -51,7 +51,7 @@ export function AppRoutes({
                 path="/login"
                 element={
                     isAuth
-                        ? <Navigate to="/" replace />
+                        ? <Navigate to="/chat" replace />
                         : <Login
                             onLogin={onLogin}
                             setUserRole={setUserRole}
@@ -71,7 +71,10 @@ export function AppRoutes({
                 element={
                     isAuth
                         ? <Navigate to="/" replace />
-                        : <Signup />
+                        : <Signup
+                            onLogin={onLogin}
+                            setUserRole={setUserRole}
+                        />
                 }
             />
 
@@ -80,7 +83,9 @@ export function AppRoutes({
                 path="/chat"
                 element={
                     isAuth
-                        ? <Chat onLogout={onLogout} />
+                        ? <ProtectedRoute>
+                            <Chat onLogout={onLogout} userRole={userRole!} />
+                        </ProtectedRoute>
                         : <Navigate to="/login" replace />
                 }
             />
@@ -104,6 +109,17 @@ export function AppRoutes({
                         : <Navigate to="/login" replace />
                 }
             />
+            <Route
+                path="/user/plan"
+                element={
+                    isAuth && userRole === 'user'
+                        ? <DashboardUsers onLogout={onLogout} />
+                        : <Navigate to="/login" replace />
+                }
+            />
+            <Route path="/subscribe/success" element={<SuccessPage />} />
+            {/* rota catch-all / home / dashboard */}
+            <Route path="*" element={<Navigate to={isAuth ? "/" : "/login"} replace />} />
         </Routes>
     )
 }

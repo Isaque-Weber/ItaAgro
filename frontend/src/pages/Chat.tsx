@@ -2,10 +2,12 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import React, { useRef, useState, useEffect, FormEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
+import logoImg from '../assets/logo-removebg-preview.png'
 import remarkGfm from 'remark-gfm'
 import 'highlight.js/styles/github.css'
 import rehypeHighlight from 'rehype-highlight'
 import { useDarkMode } from '../contexts/DarkModeContext'
+import {ChatStartScreen} from "./ChatStartScreen";
 
 type Role = 'user' | 'assistant'
 type Message = { id: string; role: Role; content: string; createdAt: string }
@@ -13,9 +15,10 @@ type Session = { id: string; threadId: string; createdAt: string }
 
 interface ChatProps {
     onLogout(): void
+    userRole: string | null
 }
 
-export function Chat({ onLogout }: ChatProps) {
+export function Chat({ onLogout, userRole }: ChatProps) {
     const navigate = useNavigate()
 
     // lista de sessões
@@ -86,15 +89,27 @@ export function Chat({ onLogout }: ChatProps) {
         setLoadingSessions(true)
         setError(null)
         try {
-            const res = await fetch(
-                `${import.meta.env.VITE_API_BASE_URL}/chat/sessions`,
-                { credentials: 'include' }
-            )
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/chat/sessions`, {
+                credentials: 'include',
+            })
             if (!res.ok) throw new Error('Falha ao carregar sessões')
+
             const data: Session[] = await res.json()
             setSessions(data)
-            // seleciona a última por padrão
-            if (data.length) setCurrentSession(data[data.length - 1])
+
+            if (data.length > 0) {
+                setCurrentSession(data[data.length - 1])
+            } else {
+                // ✅ Cria automaticamente se não houver nenhuma
+                const newSessionRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/chat/sessions`, {
+                    method: 'POST',
+                    credentials: 'include',
+                })
+                if (!newSessionRes.ok) throw new Error('Falha ao criar sessão automática')
+                const newSession: Session = await newSessionRes.json()
+                setSessions([newSession])
+                setCurrentSession(newSession)
+            }
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -280,14 +295,49 @@ export function Chat({ onLogout }: ChatProps) {
 
             <aside
                 className={`fixed md:static z-40 top-0 left-0 h-full w-64 p-4 transform transition-transform duration-300 ease-in-out
-      ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:flex md:flex-col
-      bg-white border-gray-200 dark:bg-[#202123] dark:border-gray-700`}
+    ${menuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:flex md:flex-col
+    bg-white border-gray-200 dark:bg-[#202123] dark:border-gray-700`}
             >
                 <div className="flex justify-between items-center mb-4 md:hidden">
-                    <h2 className="text-lg font-semibold">Conversas</h2>
+                    <h2 className="text-lg font-semibold">Menu</h2>
                     <button onClick={() => setMenuOpen(false)} className="text-red-500 text-lg">✕</button>
                 </div>
 
+                {/** Botões de navegação */}
+                <div className="mb-6 space-y-2">
+                    <button
+                        onClick={() => {
+                            setCurrentSession(null)
+                            setMessages([])
+                            navigate('/chat') // Reinicia a interface
+                        }}
+                        className="w-full text-left px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-[#2a2b2e] dark:hover:bg-[#35363a]"
+                    >
+                        🌿 Início
+                    </button>
+
+                    {userRole === 'admin' && (
+                        <>
+                            <button
+                                onClick={() => navigate('/admin')}
+                                className="w-full text-left px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-[#2a2b2e] dark:hover:bg-[#35363a]"
+                            >
+                                🧾Painel ADM
+                            </button>
+                        </>
+                    )}
+
+                    {userRole === 'user' && (
+                        <button
+                            onClick={() => navigate('/user/plan')}
+                            className="w-full text-left px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-[#2a2b2e] dark:hover:bg-[#35363a]"
+                        >
+                            👤 Meu Plano
+                        </button>
+                    )}
+                </div>
+
+                {/** Botão de novo chat após os menus */}
                 <button
                     onClick={handleNewSession}
                     className="mb-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition w-full"
@@ -295,12 +345,13 @@ export function Chat({ onLogout }: ChatProps) {
                     + Novo chat
                 </button>
 
+                {/** Lista de sessões */}
                 <ul className="flex-1 overflow-auto mt-2 space-y-1 text-sm">
                     {sessions.map((s) => (
                         <li key={s.id}>
                             <div
                                 className={`relative px-3 py-2 rounded-md cursor-pointer group transition border
-              ${currentSession?.id === s.id
+            ${currentSession?.id === s.id
                                     ? 'bg-green-100 font-semibold border-green-400 dark:bg-[#444654]'
                                     : 'hover:bg-gray-100 border-transparent dark:hover:bg-[#3e3f4b]'}`}
                                 onClick={() => {
@@ -308,9 +359,9 @@ export function Chat({ onLogout }: ChatProps) {
                                     setMenuOpen(false)
                                 }}
                             >
-            <span className="block truncate w-full pr-5">
-              {new Date(s.createdAt).toLocaleString()}
-            </span>
+          <span className="block truncate w-full pr-5">
+            {new Date(s.createdAt).toLocaleString()}
+          </span>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation()
@@ -326,16 +377,18 @@ export function Chat({ onLogout }: ChatProps) {
                 </ul>
 
                 <button
-                    onClick={async () => await logout()}
+                    onClick={logout}
                     className="mt-6 px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 hover:text-red-700 text-sm transition dark:border-red-400 dark:hover:bg-red-950"
                 >
                     Sair
                 </button>
             </aside>
-
             <div className="flex-1 flex flex-col h-full">
                 <header className="bg-green-600 text-white p-4 shadow text-center relative">
-                    <h1 className="text-lg font-semibold">ItaAgro Chat</h1>
+                    <div className="flex items-center justify-center">
+                        <img src={logoImg} alt="ItaAgro Logo" className="h-12 mr-2" style={{ filter: 'drop-shadow(0 0 25px #0008)' }} />
+                        <h1 className="text-lg font-semibold">ItaAgro Chat</h1>
+                    </div>
                     <button
                         onClick={toggleDarkMode}
                         className="absolute top-4 right-4 text-white text-sm"
@@ -351,15 +404,17 @@ export function Chat({ onLogout }: ChatProps) {
                                 <div key={i} className="h-20 bg-gray-300 dark:bg-gray-700 rounded-lg w-3/4" />
                             ))}
                         </div>
+                    ) : messages.length === 0 ? (
+                        <ChatStartScreen />
                     ) : (
                         <>
                             {messages.map((m) => (
                                 <div
                                     key={m.id}
                                     className={`max-w-[90%] md:max-w-2xl px-4 py-3 rounded-lg shadow-sm whitespace-pre-wrap
-                ${m.role === 'user' ? 'self-end ml-auto' : 'self-start mr-auto'}
-                bg-white dark:bg-[#444654]`}
-                                >
+                                    ${m.role === 'user' ? 'self-end ml-auto' : 'self-start mr-auto'}
+                                    bg-white dark:bg-[#444654]`}
+                                    >
                                     <p className="text-xs font-bold mb-1">{m.role === 'user' ? 'Você' : 'ItaAgro'}</p>
                                     <div className="prose prose-sm max-w-none text-sm leading-relaxed">
                                         <ReactMarkdown
@@ -371,7 +426,6 @@ export function Chat({ onLogout }: ChatProps) {
                                     </div>
                                 </div>
                             ))}
-
                             {isTyping && (
                                 <div className="bg-white px-4 py-2 rounded-lg shadow-sm self-start mr-auto text-sm text-gray-500 italic animate-pulse dark:bg-neutral-800">
                                     ItaAgro está digitando…
