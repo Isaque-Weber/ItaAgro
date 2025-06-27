@@ -73,8 +73,8 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
   }
 
   return (
-      <main className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center p-4 transition-colors duration-300">
-        <header className="w-full max-w-4xl flex justify-between items-center mb-6">
+      <main className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center p-4 transition-colors duration-300">
+        <header className="w-full max-w-4xl flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Planos de Assinatura</h1>
           <div className="space-x-2">
             <button
@@ -93,13 +93,13 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
         </header>
 
         {error && (
-            <div className="w-full max-w-4xl bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded mb-6">
+            <div className="w-full max-w-4xl bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 p-4 rounded-md mb-6 flex justify-between items-center">
               <p>{error}</p>
               <button
                   onClick={fetchPlans}
-                  className="mt-2 px-3 py-1 bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 rounded hover:bg-red-300 dark:hover:bg-red-700 transition"
+                  className="ml-4 px-3 py-1 bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 rounded-md hover:bg-red-300 dark:hover:bg-red-700 transition text-sm"
               >
-                Tentar novamente
+                Tentar Novamente
               </button>
             </div>
         )}
@@ -123,11 +123,11 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
                         <div
                             key={plan.id}
                             className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-6 rounded-lg shadow-md dark:shadow-lg flex flex-col justify-between"
+
                         >
                           <div>
                             <h2 className="text-xl font-semibold mb-4">{plan.reason}</h2>
                             <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">
-                              {formatPlanDescription(plan)}
                             </p>
                             {plan.repetitions && (
                                 <p className="text-gray-600 dark:text-gray-400">
@@ -139,7 +139,7 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
                           <a
                               {...({ name: 'MP-payButton' } as any)}
                               href={href}
-                              className="mt-6 inline-block text-center w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition"
+                              className="mt-6 inline-block text-center w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition"
                           >
                             Assinar
                           </a>
