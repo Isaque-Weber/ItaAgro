@@ -1,8 +1,18 @@
 // src/controllers/subscription.ts
-import { FastifyInstance } from 'fastify';
+import {FastifyInstance, FastifyRequest} from 'fastify';
 import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago';
 import dotenv from 'dotenv';
 dotenv.config({ path: '../.env' });
+
+interface AuthenticatedRequest extends FastifyRequest<{
+  Body: { planId: string }
+}> {
+  user: {
+    sub:   string
+    email: string
+    role:  string
+  }
+}
 
 export async function subscriptionRoutes(app: FastifyInstance) {
   // configura o client do Mercado Pago
@@ -38,7 +48,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
     }
   });
 
-  // 🛒 POST /checkout — cria sessão de checkout para um dado plano
   app.post(
       '/checkout',
       {
@@ -48,30 +57,33 @@ export async function subscriptionRoutes(app: FastifyInstance) {
             type: 'object',
             required: ['planId'],
             properties: {
-              planId: { type: 'string' },
-              reason: { type: 'string' }
+              planId: { type: 'string' }
             }
           }
         }
       },
-      async (req, reply) => {
-        const { planId } = req.body as { planId: string };
-        const email     = (req.user as any).email as string;
-        const frontUrl  = process.env.FRONTEND_URL!;
-        const token     = process.env.MERCADOPAGO_ACCESS_TOKEN!;
+      async (rawReq, reply) => {
+        // **2) “Cast” do FastifyRequest genérico para o nosso AuthenticatedRequest**
+        const req = rawReq as AuthenticatedRequest
 
-        // @ts-ignore
+        // 3) Agora podemos ler com segurança
+        const { planId } = req.body
+        const { email, sub: userId } = req.user
+        const frontUrl = process.env.FRONTEND_URL!
+        const token    = process.env.MERCADOPAGO_ACCESS_TOKEN!
+
+        // 4) Monta o payload
         const payload = {
           preapproval_plan_id: planId,
           payer_email:         email,
           back_url:            `${frontUrl}/subscribe/success`,
-          external_reference:  `user_${req.user.sub}`
-        };
+          external_reference:  `user_${userId}`
+        }
 
-        // Log legível:
-        app.log.info('📤 Enviando para MP: ' + JSON.stringify(payload, null, 2));
+        app.log.info('🚀 Enviando para MP:', JSON.stringify(payload, null, 2))
 
         try {
+          // 5) Chama a API do Mercado Pago direto com fetch
           const mpRes = await fetch('https://api.mercadopago.com/preapproval', {
             method: 'POST',
             headers: {
@@ -79,26 +91,29 @@ export async function subscriptionRoutes(app: FastifyInstance) {
               Authorization:   `Bearer ${token}`
             },
             body: JSON.stringify(payload)
-          });
+          })
+          const d = await mpRes.json()
 
-          const data = await mpRes.json();
-          app.log.info('📥 MP retornou: ' + JSON.stringify(data, null, 2));
+          app.log.info('📥 MP retornou:', d)
 
-          if (!mpRes.ok) {
-            const msg = data.message || JSON.stringify(data);
-            return reply.status(500).send({ error: `MP error: ${msg}` });
-          }
-          if (!data.init_point) {
-            return reply.status(500).send({ error: 'init_point não retornado pelo MP' });
+          if (!d.init_point) {
+            app.log.error('❌ init_point ausente na resposta', d)
+            return reply.code(500).send({ error: 'init_point não retornado pelo Mercado Pago' })
           }
 
-          return reply.send({
-            init_point:     data.init_point,
-            subscriptionId: data.id
-          });
+          // 6) Retorna a URL para o cliente redirecionar
+          return reply.code(200).send({
+            init_point:     d.init_point,
+            subscriptionId: d.id
+          })
         } catch (err: any) {
-          app.log.error('❌ Erro ao chamar MP diretamente:', err);
-          return reply.status(500).send({ error: err.message || 'Checkout failed' });
+          app.log.error('-=-=- Erro Mercado Pago -=-=-')
+          app.log.error('Message:', err.message)
+          app.log.error('Response data:', err.response?.data ?? err)
+
+          return reply.code(500).send({
+            error: err.response?.data ?? err.message
+          })
         }
       }
   )
