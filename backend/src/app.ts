@@ -54,11 +54,9 @@ export async function build(): Promise<FastifyInstance> {
       req: FastifyRequest,
       reply: FastifyReply
   ) {
-    // agora req.user já está garantido não-null
     const user = req.user as any;
-
-    // Admin sempre pula
-    if (String(user.role).toLowerCase() === 'admin') return;
+    // Admins pulam checagem
+    if (user.role === 'admin') return;
 
     // Busca última assinatura
     const subscriptionRepo = AppDataSource.getRepository(Subscription);
@@ -79,14 +77,9 @@ export async function build(): Promise<FastifyInstance> {
     }
   }
 
-  // 5) Chat routes — agora com autenticação _e_ verificação de assinatura
+  // Registro do bloco /chat com o hook acima
   await app.register(async fb => {
-    // 1º: autentica o usuário
-    fb.addHook('preHandler', app.authenticate);
-    // 2º: só deixa passar quem for admin ou tiver assinatura ativa
     fb.addHook('preHandler', requireActiveSubscription);
-
-    // 3º: então registra suas rotas de chat
     await fb.register(chatRoutes, { prefix: '' });
   }, { prefix: '/chat' });
 
