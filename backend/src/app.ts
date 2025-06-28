@@ -79,7 +79,11 @@ export async function build(): Promise<FastifyInstance> {
 
   // Registro do bloco /chat com o hook acima
   await app.register(async fb => {
+    // 1) Autentica o usuário e popula req.user
+    fb.addHook('preHandler', app.authenticate);
+    // 2) Verifica assinatura/admin
     fb.addHook('preHandler', requireActiveSubscription);
+    // 3) Registra suas rotas de chat
     await fb.register(chatRoutes, { prefix: '' });
   }, { prefix: '/chat' });
 
