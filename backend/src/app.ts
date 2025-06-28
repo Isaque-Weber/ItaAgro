@@ -1,6 +1,7 @@
+// backend/src/app.ts
 import 'reflect-metadata';
 import 'dotenv/config';
-import Fastify, { FastifyInstance } from 'fastify';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import authPlugin from './plugins/auth.plugin';
 import { authRoutes } from './controllers/auth.controller';
@@ -11,87 +12,88 @@ import { agrofitRoutes } from './controllers/agrofit';
 import { paymentWebhookRoutes } from './controllers/paymentWebhookController';
 import { subscriptionRoutes } from './controllers/subscription';
 
-/**
- * Build a Fastify instance for the application
- * This is used both by the main server and by tests
- */
+// Importa entidade e datasource para checar assinatura
+import { Subscription, SubscriptionStatus } from './entities/Subscription';
+import { AppDataSource }                     from './services/typeorm/data-source';
+
 export async function build(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: true, // Enable logger for development
-    bodyLimit: 10485760 // 10MB for larger webhook payloads
+    logger: true,            // log no console
+    bodyLimit: 10485760      // 10MB para webhooks grandes
   });
 
-  // 1) CORS (needs credentials to send HttpOnly cookies)
+  // 1) CORS (com credenciais)
   await app.register(cors, {
     origin: (origin, cb) => {
-      const allowedOrigins = [
+      const allowed = [
         'http://localhost:5173',
         'https://itaagro.up.railway.app'
       ];
-      if (!origin || allowedOrigins.includes(origin)) {
-        cb(null, true);
-      } else {
-        cb(new Error("Not allowed by CORS"), false);
-      }
+      if (!origin || allowed.includes(origin)) cb(null, true);
+      else cb(new Error('Not allowed by CORS'), false);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    methods: ['GET','POST','PUT','DELETE','OPTIONS']
   });
 
-  // 2) Authentication plugin (cookie + jwt + authenticate)
+  // 2) Autenticação (cookie + JWT)
   await app.register(authPlugin);
 
-  // 3) Public auth routes
+  // 3) Rotas públicas de auth
   await app.register(authRoutes, { prefix: '/auth' });
 
-  // 4) Admin routes (already use app.authenticate internally)
+  // 4) Rotas de admin (já fazem app.authenticate internamente)
   await app.register(adminRoutes, { prefix: '/admin' });
 
-  // 5) Chat routes — só usuários assinantes ou admin entram
-  await app.register(async fb => {
-    // Hook roda antes de qualquer handler dentro de /chat
-    fb.addHook('preHandler', async (req, reply) => {
-      const user = req.user as any;
-      // Admin ignora a verificação de assinatura
-      if (user.role === 'admin') return;
+  // --------------------------------------
+  // 5) Rotas de chat — somente assinantes
+  // --------------------------------------
 
-      // Checa status de assinatura
-      const statusRes = await fb.inject({
-        method: 'GET',
-        url: '/api/subscription/status',
-        headers: { cookie: req.headers.cookie! }
-      });
-      const { subscribed } = statusRes.json() as { subscribed: boolean };
+  // Middleware que exige assinatura ACTIVE ou AUTHORIZED (ou admin)
+  async function requireActiveSubscription(
+      req: FastifyRequest,
+      reply: FastifyReply
+  ) {
+    const user = req.user as any;
+    // Admins pulam checagem
+    if (user.role === 'admin') return;
 
-      if (!subscribed) {
-        return reply.code(403).send({
-          error: 'Você precisa assinar antes de acessar o chat.'
-        });
-      }
+    // Busca última assinatura
+    const subscriptionRepo = AppDataSource.getRepository(Subscription);
+    const plan = await subscriptionRepo.findOne({
+      where: { user: { id: user.sub } },
+      order: { createdAt: 'DESC' }
     });
 
-    // Depois do hook, registramos as rotas normais de chat
+    const ok =
+        plan &&
+        (plan.status === SubscriptionStatus.ACTIVE ||
+            plan.status === SubscriptionStatus.AUTHORIZED);
+
+    if (!ok) {
+      return reply.status(403).send({
+        error: 'É necessário ter uma assinatura ativa para acessar o chat.'
+      });
+    }
+  }
+
+  // Registro do bloco /chat com o hook acima
+  await app.register(async fb => {
+    fb.addHook('preHandler', requireActiveSubscription);
     await fb.register(chatRoutes, { prefix: '' });
   }, { prefix: '/chat' });
 
-  // 6) Webhook routes (no authentication)
+  // 6) Webhook (sem autenticação)
   await app.register(webhookRoutes, { prefix: '/webhook' });
 
-  // 7) Agrofit API routes
+  // 7) Agrofit API
   await app.register(agrofitRoutes, { prefix: '/agrofit' });
 
-  // 8) Payment webhook routes (no authentication)
+  // 8) Payment webhooks (sem autenticação)
   await app.register(paymentWebhookRoutes, { prefix: '/payments' });
 
-  // 9) Subscription routes
+  // 9) Subscription routes (plans, checkout, status…)
   await app.register(subscriptionRoutes, { prefix: '/api' });
-
-  // 10) Example protected route
-  app.get(
-    '/protected',
-    { preHandler: [app.authenticate] },
-    async () => ({ data: 'Protected content accessed!' })
-  );
 
   return app;
 }
