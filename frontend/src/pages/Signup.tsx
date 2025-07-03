@@ -46,14 +46,10 @@ export function Signup({ onLogin, setUserRole }: SignupProps) {
                 throw new Error(body.message || `Erro ${res.status}`)
             }
 
-            const data = (await res.json()) as { token: string; role: string }
-
-            // 1) Atualiza o estado de autenticação no App.tsx
-            onLogin()
-            setUserRole(data.role)
-
-            // 2) Redireciona para a página de planos
-            navigate('/subscribe')
+            // Após cadastro, exibe mensagem de verificação
+            setLoading(false)
+            navigate('/verify-email?afterSignup=1&email=' + encodeURIComponent(form.email))
+            return
         } catch (err: any) {
             setError(err.message ?? 'Falha ao cadastrar')
             setLoading(false)
@@ -66,9 +62,15 @@ export function Signup({ onLogin, setUserRole }: SignupProps) {
                 onSubmit={handleSubmit}
                 className="max-w-md w-full bg-white dark:bg-gray-800 p-6 rounded shadow-md space-y-4"
             >
-                <h1 className="text-2xl font-semibold text-center">Criar Conta</h1>
+                <h1 className="text-2xl font-semibold text-center text-gray-900 dark:text-gray-100">
+                    Criar Conta
+                </h1>
 
-                {error && <div className="text-red-600 text-sm">{error}</div>}
+                {error && (
+                    <div className="text-red-600 dark:text-red-400 text-sm">
+                        {error}
+                    </div>
+                )}
 
                 <input
                     name="name"
@@ -77,7 +79,7 @@ export function Signup({ onLogin, setUserRole }: SignupProps) {
                     value={form.name}
                     onChange={handleChange}
                     required
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
 
                 <input
@@ -87,7 +89,7 @@ export function Signup({ onLogin, setUserRole }: SignupProps) {
                     value={form.email}
                     onChange={handleChange}
                     required
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
 
                 <input
@@ -97,22 +99,27 @@ export function Signup({ onLogin, setUserRole }: SignupProps) {
                     value={form.password}
                     onChange={handleChange}
                     required
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
 
                 <button
                     type="submit"
                     disabled={loading}
                     className={`w-full py-2 rounded text-white ${
-                        loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+                        loading
+                            ? 'bg-gray-400 dark:bg-gray-600'
+                            : 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
                     }`}
                 >
                     {loading ? 'Cadastrando...' : 'Criar Conta e Ver Planos'}
                 </button>
 
-                <p className="text-sm text-center">
+                <p className="text-sm text-center text-gray-700 dark:text-gray-300">
                     Já tem conta?{' '}
-                    <Link to="/login" className="text-blue-600 hover:underline">
+                    <Link
+                        to="/login"
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
                         Entrar
                     </Link>
                 </p>

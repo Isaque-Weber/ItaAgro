@@ -1,3 +1,4 @@
+// frontend/src/pages/SubscribePage.tsx
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -20,20 +21,8 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Injetar script do Mercado Pago ao montar para habilitar modal
   useEffect(() => {
-    if (!document.getElementById('mp-script')) {
-      const s = document.createElement('script')
-      s.id = 'mp-script'
-      s.async = true
-      s.src = 'https://secure.mlstatic.com/mptools/render.js'
-      document.body.appendChild(s)
-    }
-  }, [])
-
-  // Buscar planos do backend
-  useEffect(() => {
-    fetchPlans().catch(console.error)
+    fetchPlans()
   }, [])
 
   async function fetchPlans() {
@@ -61,21 +50,27 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
     }
   }
 
-  function formatCurrency(v: number) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+  function formatCurrency(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value)
   }
 
   function formatPlanDescription(plan: Plan) {
+    const price = formatCurrency(plan.transaction_amount)
     if (plan.repetitions) {
-      return `${formatCurrency(plan.transaction_amount)}/mês por ${plan.repetitions} meses`
+      return `${price}/mês por ${plan.repetitions} meses`
     }
-    return `${formatCurrency(plan.transaction_amount)}/mês`
+    return `${price}/mês`
   }
 
   return (
       <main className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center p-4 transition-colors duration-300">
         <header className="w-full max-w-4xl flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Planos de Assinatura</h1>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+            Planos de Assinatura
+          </h1>
           <div className="space-x-2">
             <button
                 onClick={() => navigate(-1)}
@@ -106,7 +101,9 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
 
         {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-600 dark:text-gray-400">Carregando planos...</p>
+              <p className="text-gray-600 dark:text-gray-400">
+                Carregando planos...
+              </p>
             </div>
         ) : (
             <div className="w-full max-w-4xl grid gap-6 grid-cols-1 md:grid-cols-2">
@@ -116,30 +113,36 @@ export function SubscribePage({ onLogout }: SubscribePageProps) {
                   </p>
               ) : (
                   plans.map(plan => {
-                    const href =
-                        `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${plan.id}`
+                    const description = formatPlanDescription(plan)
+                    const total =
+                        plan.repetitions
+                            ? formatCurrency(plan.transaction_amount * plan.repetitions)
+                            : null
+                    const href = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${plan.id}`
 
                     return (
                         <div
                             key={plan.id}
                             className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 p-6 rounded-lg shadow-md dark:shadow-lg flex flex-col justify-between"
-
                         >
                           <div>
-                            <h2 className="text-xl font-semibold mb-4">{plan.reason}</h2>
-                            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">
+                            <h2 className="text-xl font-semibold mb-2">
+                              {plan.reason}
+                            </h2>
+                            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
+                              {description}
                             </p>
-                            {plan.repetitions && (
+                            {total && (
                                 <p className="text-gray-600 dark:text-gray-400">
-                                  Total: {formatCurrency(plan.transaction_amount * plan.repetitions)}
+                                  Total: {total}
                                 </p>
                             )}
                           </div>
-                          {/* Injetar atributo name via any para CCS do MP */}
+                          {/* Injetar name via any para o script do Mercado Pago */}
                           <a
                               {...({ name: 'MP-payButton' } as any)}
                               href={href}
-                              className="mt-6 inline-block text-center w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition"
+                              className="mt-4 inline-block text-center w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition"
                           >
                             Assinar
                           </a>

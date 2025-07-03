@@ -6,6 +6,7 @@ const agrofitTool = new AgrofitTool()
 
 // Limita o tamanho das saídas das ferramentas para evitar erros >1MB
 function safeOutput(str: string): string {
+    if (!str) return ''
     const MAX = 200_000
     return str.length > MAX ? str.slice(0, MAX) : str
 }

@@ -1,39 +1,52 @@
+import 'jest';
 import { User } from '../../src/entities/User';
+import { AppDataSource } from '../../src/services/typeorm/data-source';
 import bcrypt from 'bcrypt';
+import { Repository } from 'typeorm';
+import { UserRole } from '../../src/entities/User'; // ajuste necessário
 
 describe('User Entity', () => {
-  let user: User;
+  let userRepository: Repository<User>;
 
-  beforeEach(() => {
-    user = new User();
-    user.email = 'test@example.com';
-    user.password = 'password123';
-    user.role = 'user';
+  beforeAll(async () => {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    userRepository = AppDataSource.getRepository(User);
   });
 
-  it('should create a valid user', () => {
-    expect(user).toBeInstanceOf(User);
-    expect(user.email).toBe('test@example.com');
-    expect(user.role).toBe('user');
+  it('deve criar um novo usuário com senha criptografada', async () => {
+    const userData = {
+      email: 'test@example.com',
+      name: 'Test User',
+      password: 'password123',
+      role: UserRole.USER,
+    };
+
+    const user = userRepository.create(userData);
+    await userRepository.save(user);
+
+    const savedUser = await userRepository.findOneBy({ email: userData.email });
+    expect(savedUser).toBeDefined();
+    expect(savedUser?.email).toBe(userData.email);
+    expect(savedUser?.name).toBe(userData.name);
+
+    const isPasswordValid = await bcrypt.compare(userData.password, savedUser!.password);
+    expect(isPasswordValid).toBe(true);
   });
 
-  it('should hash the password before insert', async () => {
-    // Call the private method using any type assertion
-    await (user as any).hashPassword();
-    
-    // Verify the password was hashed
-    expect(user.password).not.toBe('password123');
-    
-    // Verify the hashed password can be compared correctly
-    const isMatch = await bcrypt.compare('password123', user.password);
-    expect(isMatch).toBe(true);
-  });
+  it('não deve permitir dois usuários com o mesmo email', async () => {
+    const userData = {
+      email: 'duplicate@example.com',
+      name: 'Test User',
+      password: 'password123',
+      role: UserRole.USER,
+    };
 
-  it('should have correct relationships defined', () => {
-    // Check that the relationships are defined
-    expect(user.subscriptions).toBeUndefined(); // Initially undefined until loaded
-    expect(user.chatSessions).toBeUndefined(); // Initially undefined until loaded
-    
-    // In a real test with a database connection, you would test loading relationships
+    await userRepository.save(userRepository.create(userData));
+
+    await expect(() =>
+        userRepository.save(userRepository.create(userData))
+    ).rejects.toThrow(/duplicate|violates unique constraint/i);
   });
 });

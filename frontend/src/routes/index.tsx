@@ -6,10 +6,12 @@ import { RecoverPassword } from '../pages/RecoverPassword'
 import { Signup }          from '../pages/Signup'
 import { Chat }            from '../pages/Chat'
 import { AdminDashboard }  from '../pages/AdminDashboard'
-import DashboardUsers from "../pages/DashboardUsers";
+import DashboardUsers from "../pages/DashboardUsers"
 import { SubscribePage }   from '../pages/SubscribePage'
 import { SuccessPage }   from '../pages/SuccessPage'
-import {ProtectedRoute} from "../components/ProtectedRoute";
+import {ProtectedRoute} from "../components/ProtectedRoute"
+import { GoogleCallback } from '../pages/GoogleCallback'
+import VerifyEmail from '../pages/VerifyEmail'
 
 export interface AppRoutesProps {
     /** Chamada após um login bem-sucedido */
@@ -28,29 +30,29 @@ export interface AppRoutesProps {
  * Componente que centraliza TODAS as rotas da aplicação.
  */
 export function AppRoutes({
-                              onLogin,
-                              onLogout,
-                              isAuth,
-                              setUserRole,
-                              userRole,
-                          }: AppRoutesProps): ReactElement {
+    onLogin,
+    onLogout,
+    isAuth,
+    setUserRole,
+    userRole,
+}: AppRoutesProps): ReactElement {
     return (
         <Routes>
-            {/** Rota raiz — Chat */}
+            {/* Rota raiz — Chat */}
             <Route
                 path="/"
                 element={
-                    isAuth && userRole
+                    isAuth && (userRole === 'admin' || userRole === 'user')
                         ? <Navigate to="/chat" replace />
                         : <Navigate to="/login" replace />
                 }
             />
 
-            {/** Páginas de autenticação */}
+            {/* Páginas de autenticação */}
             <Route
                 path="/login"
                 element={
-                    isAuth
+                    isAuth && (userRole === 'admin' || userRole === 'user')
                         ? <Navigate to="/chat" replace />
                         : <Login
                             onLogin={onLogin}
@@ -61,7 +63,7 @@ export function AppRoutes({
             <Route
                 path="/recover"
                 element={
-                    isAuth
+                    isAuth && (userRole === 'admin' || userRole === 'user')
                         ? <Navigate to="/" replace />
                         : <RecoverPassword />
                 }
@@ -69,7 +71,7 @@ export function AppRoutes({
             <Route
                 path="/signup"
                 element={
-                    isAuth
+                    isAuth && (userRole === 'admin' || userRole === 'user')
                         ? <Navigate to="/" replace />
                         : <Signup
                             onLogin={onLogin}
@@ -77,20 +79,28 @@ export function AppRoutes({
                         />
                 }
             />
+            <Route
+                path="/verify-email"
+                element={
+                    isAuth && (userRole === 'admin' || userRole === 'user')
+                        ? <Navigate to="/" replace />
+                        : <VerifyEmail />
+                }
+            />
 
             {/** Chat */}
             <Route
                 path="/chat"
                 element={
-                    isAuth
+                    isAuth && (userRole === 'admin' || userRole === 'user')
                         ? <ProtectedRoute>
-                            <Chat onLogout={onLogout} userRole={userRole!} />
+                            <Chat onLogout={onLogout} userRole={userRole as 'admin' | 'user'} />
                         </ProtectedRoute>
                         : <Navigate to="/login" replace />
                 }
             />
 
-            {/** Página de Assinatura */}
+            {/* Página de Assinatura */}
             <Route
                 path="/subscribe"
                 element={
@@ -118,6 +128,7 @@ export function AppRoutes({
                 }
             />
             <Route path="/subscribe/success" element={<SuccessPage />} />
+            <Route path="/auth/google/callback" element={<GoogleCallback />} />
             {/* rota catch-all / home / dashboard */}
             <Route path="*" element={<Navigate to={isAuth ? "/" : "/login"} replace />} />
         </Routes>

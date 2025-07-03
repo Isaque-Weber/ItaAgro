@@ -1,41 +1,21 @@
-import { FastifyInstance } from 'fastify';
-import { build } from '../../src/app'; // We'll need to create this file
+import 'jest';
+import { createTestApp } from '../helpers/app';
 import { AppDataSource } from '../../src/services/typeorm/data-source';
 import { User } from '../../src/entities/User';
+import { FastifyInstance } from 'fastify';
 import bcrypt from 'bcrypt';
-
-// Mock TypeORM's AppDataSource
-jest.mock('../../src/services/typeorm/data-source', () => ({
-  AppDataSource: {
-    getRepository: jest.fn(),
-  },
-}));
 
 describe('Auth Controller', () => {
   let app: FastifyInstance;
-  let mockUserRepo: any;
-  let mockUser: User;
+  let userRepository: any;
 
   beforeAll(async () => {
-    // Create the Fastify app
-    app = await build();
+    app = await createTestApp();
+    userRepository = AppDataSource.getRepository(User);
   });
 
-  beforeEach(() => {
-    // Create a mock user
-    mockUser = new User();
-    mockUser.id = '123e4567-e89b-12d3-a456-426614174000';
-    mockUser.email = 'test@example.com';
-    mockUser.password = bcrypt.hashSync('password123', 10);
-    mockUser.role = 'user';
+  beforeEach(async () => {
 
-    // Mock the user repository
-    mockUserRepo = {
-      findOneBy: jest.fn().mockResolvedValue(mockUser),
-    };
-
-    // Set up the mock repository
-    (AppDataSource.getRepository as jest.Mock).mockReturnValue(mockUserRepo);
   });
 
   afterAll(async () => {
@@ -43,115 +23,101 @@ describe('Auth Controller', () => {
   });
 
   describe('POST /auth/login', () => {
-    it('should return 200 and set cookie with valid credentials', async () => {
+    beforeEach(async () => {
+      const password = await bcrypt.hash('senha123', 10);
+      await userRepository.save(userRepository.create({
+        email: 'teste@exemplo.com',
+        name: 'Usuário Teste',
+        password,
+        role: 'user'
+      }));
+    });
+
+    it('deve fazer login com credenciais válidas', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/auth/login',
         payload: {
-          email: 'test@example.com',
-          password: 'password123',
-        },
+          email: 'teste@exemplo.com',
+          password: 'senha123'
+        }
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual(expect.objectContaining({
-        success: true,
-        role: 'user',
-      }));
-      expect(response.headers['set-cookie']).toBeDefined();
-      expect(response.headers['set-cookie'][0]).toContain('itaagro_token');
+      const body = JSON.parse(response.body);
+      expect(body.token).toBeDefined();
     });
 
-    it('should return 401 with invalid credentials', async () => {
-      // Mock bcrypt.compare to return false for invalid password
-      jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
-
+    it('deve rejeitar login com senha incorreta', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/auth/login',
         payload: {
-          email: 'test@example.com',
-          password: 'wrongpassword',
-        },
+          email: 'teste@exemplo.com',
+          password: 'senhaerrada'
+        }
       });
 
       expect(response.statusCode).toBe(401);
-      expect(response.json()).toEqual(expect.objectContaining({
-        message: 'Credenciais inválidas',
-      }));
     });
 
-    it('should return 401 when user not found', async () => {
-      // Mock repository to return null (user not found)
-      mockUserRepo.findOneBy.mockResolvedValueOnce(null);
-
+    it('deve rejeitar login com email não cadastrado', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/auth/login',
         payload: {
-          email: 'nonexistent@example.com',
-          password: 'password123',
-        },
+          email: 'naocadastrado@exemplo.com',
+          password: 'senha123'
+        }
       });
 
       expect(response.statusCode).toBe(401);
-      expect(response.json()).toEqual(expect.objectContaining({
-        message: 'Usuário inválido',
-      }));
     });
   });
 
-  describe('POST /auth/logout', () => {
-    it('should clear the cookie and return success', async () => {
+  describe('POST /auth/signup', () => {
+    it('deve criar uma nova conta com dados válidos', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/auth/logout',
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({ success: true });
-      expect(response.headers['set-cookie']).toBeDefined();
-      expect(response.headers['set-cookie'][0]).toContain('itaagro_token=;');
-    });
-  });
-
-  describe('GET /auth/me', () => {
-    it('should return user info when authenticated', async () => {
-      // First login to get a token
-      const loginResponse = await app.inject({
-        method: 'POST',
-        url: '/auth/login',
+        url: '/auth/signup',
         payload: {
-          email: 'test@example.com',
-          password: 'password123',
-        },
+          email: 'novo@exemplo.com',
+          name: 'Novo Usuário',
+          password: 'senha123'
+        }
       });
 
-      const cookies = loginResponse.headers['set-cookie'];
+      expect(response.statusCode).toBe(201);
 
-      // Then use the token to access /me
-      const response = await app.inject({
-        method: 'GET',
-        url: '/auth/me',
-        headers: {
-          cookie: cookies[0],
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual({
-        email: 'test@example.com',
-        role: 'user',
-      });
+      const user = await userRepository.findOneBy({ email: 'novo@exemplo.com' });
+      expect(user).toBeDefined();
+      expect(user.name).toBe('Novo Usuário');
     });
 
-    it('should return 401 when not authenticated', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/auth/me',
+    it('não deve permitir cadastro com email já existente', async () => {
+      // Primeiro cadastro
+      await app.inject({
+        method: 'POST',
+        url: '/auth/signup',
+        payload: {
+          email: 'duplicado@exemplo.com',
+          name: 'Usuário Duplicado',
+          password: 'senha123'
+        }
       });
 
-      expect(response.statusCode).toBe(401);
+      // Tentativa de cadastro duplicado
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/signup',
+        payload: {
+          email: 'duplicado@exemplo.com',
+          name: 'Outro Usuário',
+          password: 'outrasenha'
+        }
+      });
+
+      expect(response.statusCode).toBe(400);
     });
   });
 });

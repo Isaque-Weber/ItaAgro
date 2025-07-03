@@ -23,8 +23,17 @@ export class User {
     @Column({type: 'varchar', length: 255})
     name!: string
 
-    @Column({ type: 'varchar', length: 100 })
-    password!: string
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    password?: string
+
+    @Column({ type: 'boolean', default: false })
+    emailVerified!: boolean
+
+    @Column({ type: 'varchar', length: 64, nullable: true })
+    verificationToken?: string
+
+    @Column({ type: 'timestamp', nullable: true })
+    verificationTokenExpiresAt?: Date
 
     @Column({ type: 'enum', enum: ['user','admin'], default: 'user' })
     role!: 'user' | 'admin'

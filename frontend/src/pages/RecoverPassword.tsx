@@ -9,19 +9,32 @@ export function RecoverPassword() {
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>()
 
     const onSubmit: SubmitHandler<FormValues> = async ({ email }) => {
+        console.log('onSubmit chamado com:', email);
+        const url = `${import.meta.env.VITE_API_BASE_URL}/auth/recover`;
+        console.log('URL chamada:', url);
         try {
             const res = await fetch(
-                `${import.meta.env.VITE_API_BASE_URL}/auth/recover`,
+                url,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email }),
                 }
             )
-            if (!res.ok) throw new Error('Erro ao solicitar recuperação')
+            if (!res.ok) {
+                let msg = 'Erro ao solicitar recuperação';
+                try {
+                    const data = await res.json();
+                    msg = data?.message || msg;
+                } catch {}
+                // Exibe mensagem personalizada para e-mail não cadastrado
+                alert(msg);
+                return;
+            }
             alert('Verifique seu e-mail para o link de recuperação.')
             navigate('/login')
         } catch (err: any) {
+            console.error('Erro no onSubmit:', err);
             alert(err.message || 'Erro no servidor')
         }
     }

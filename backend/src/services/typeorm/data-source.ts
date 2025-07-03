@@ -10,7 +10,7 @@ export const AppDataSource = new DataSource({
     type:     'postgres',
     url:      process.env.DATABASE_URL,
     synchronize: true,   // em dev true, em prod deixe false e use migrations
-    dropSchema: false,
+    dropSchema: true,
     logging:    false,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     entities: [

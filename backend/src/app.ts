@@ -11,6 +11,7 @@ import { webhookRoutes } from './controllers/webhook';
 import { agrofitRoutes } from './controllers/agrofit';
 import { paymentWebhookRoutes } from './controllers/paymentWebhookController';
 import { subscriptionRoutes } from './controllers/subscription';
+import { googleAuthPlugin } from './plugins/google-auth.plugin';
 
 // Importa entidade e datasource para checar assinatura
 import { Subscription, SubscriptionStatus } from './entities/Subscription';
@@ -98,6 +99,9 @@ export async function build(): Promise<FastifyInstance> {
 
   // 9) Subscription routes (plans, checkout, status…)
   await app.register(subscriptionRoutes, { prefix: '/api' });
+
+  // Registra o plugin do Google OAuth
+  await app.register(googleAuthPlugin);
 
   return app;
 }

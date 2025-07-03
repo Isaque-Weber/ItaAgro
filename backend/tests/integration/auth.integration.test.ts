@@ -4,6 +4,11 @@ import { AppDataSource } from '../../src/services/typeorm/data-source';
 import { User } from '../../src/entities/User';
 import bcrypt from 'bcrypt';
 
+jest.mock('../../src/utils/mailer', () => ({
+  sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+  sendEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
 /**
  * Integration tests for the auth endpoints
  * 
@@ -38,7 +43,8 @@ describe('Auth Integration Tests', () => {
     testUser.email = 'integration-test@example.com';
     testUser.password = 'password123'; // Will be hashed by the entity
     testUser.role = 'user';
-    
+    testUser.name = 'Test User'; // Corrige campo obrigatório
+
     await userRepository.save(testUser);
   });
 
@@ -74,7 +80,7 @@ describe('Auth Integration Tests', () => {
         role: 'user',
       }));
       expect(response.headers['set-cookie']).toBeDefined();
-      expect(response.headers['set-cookie'][0]).toContain('itaagro_token');
+      expect(response.headers['set-cookie']?.[0]).toContain('itaagro_token');
     });
 
     it('should return 401 with invalid credentials', async () => {
@@ -123,13 +129,13 @@ describe('Auth Integration Tests', () => {
       });
 
       const cookies = loginResponse.headers['set-cookie'];
-
+      expect(cookies).toBeDefined();
       // Then use the token to access /me
       const response = await app.inject({
         method: 'GET',
         url: '/auth/me',
         headers: {
-          cookie: cookies[0],
+          cookie: cookies?.[0],
         },
       });
 

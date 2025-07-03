@@ -95,7 +95,7 @@ export function App() {
         <>
             <AppRoutes
                 isAuth={isAuth}
-                userRole={userRole}
+                userRole={userRole === 'admin' || userRole === 'user' ? userRole : null}
                 onLogin={() => setIsAuth(true)}
                 setUserRole={setUserRole}
                 onLogout={() => {

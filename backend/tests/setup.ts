@@ -1,17 +1,39 @@
-import 'reflect-metadata';
 import dotenv from 'dotenv';
+import { AppDataSource } from '../src/services/typeorm/data-source';
 
-// Load environment variables from .env file
-dotenv.config();
+dotenv.config({ path: '.env.test' });
 
-// Global test setup
 beforeAll(async () => {
-  // Add any global setup here (e.g., database connection for integration tests)
-  console.log('Starting tests...');
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+  }
 });
 
-// Global test teardown
-afterAll(async () => {
-  // Add any global teardown here (e.g., closing database connections)
-  console.log('Tests completed.');
+afterEach(async () => {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    await queryRunner.query(`SET session_replication_role = 'replica'`);
+    for (const entity of AppDataSource.entityMetadatas) {
+      const tableName = `"${entity.tableName}"`;
+      await queryRunner.query(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`);
+    }
+    await queryRunner.query(`SET session_replication_role = 'origin'`);
+    await queryRunner.commitTransaction();
+  } catch (err) {
+    await queryRunner.rollbackTransaction();
+    throw err;
+  } finally {
+    await queryRunner.release();
+  }
 });
+
+afterAll(async () => {
+  if (AppDataSource.isInitialized) {
+    await AppDataSource.destroy();
+  }
+});
+
+jest.setTimeout(20000);

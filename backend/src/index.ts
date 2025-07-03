@@ -33,10 +33,7 @@ async function start() {
   // app.get('/health', async (req, res) => {
   //   return { status: 'ok', uptime: process.uptime() }
   // })
-
 }
-
-
 
 start().catch(err => {
   console.error('Erro ao iniciar o servidor Fastify:', err)

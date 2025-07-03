@@ -21,12 +21,13 @@ async function seed() {
 
         if (!user) {
             // cria um novo (vai disparar @BeforeInsert)
-            user = repo.create({ email, password: rawPassword, role, name })
+            user = repo.create({ email, password: rawPassword, role, name, emailVerified: true })
         } else {
             // já existe → atualiza a senha e o nome (vai disparar @BeforeUpdate)
             user.password = rawPassword
             user.role     = role
             user.name     = name
+            user.emailVerified = true
         }
 
         // salva no banco (insert ou update conforme o caso)

@@ -6,7 +6,13 @@ import { FastifyPluginAsync } from 'fastify'
 
 const authPlugin: FastifyPluginAsync = async (fastify) => {
     // 1) Cookie parser
-    fastify.register(fastifyCookie)
+    fastify.register(fastifyCookie, {
+        secret: process.env.JWT_SECRET as string, // Usar o mesmo segredo do JWT
+        cookie: {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        },
+    })
 
     // 2) JWT (lê o token do header ou do cookie itaagro_token)
     fastify.register(fastifyJwt, {
