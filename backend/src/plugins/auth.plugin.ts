@@ -8,7 +8,7 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
     // 1) Cookie parser
     fastify.register(fastifyCookie, {
         secret: process.env.JWT_SECRET as string, // Usar o mesmo segredo do JWT
-        cookie: {
+        parseOptions: {
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         },
