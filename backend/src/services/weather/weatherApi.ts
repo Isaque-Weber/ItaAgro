@@ -1,4 +1,5 @@
 import axios from 'axios';
+import 'dotenv/config';
 
 /**
  * Cliente para integração com a API de clima para o Brasil
@@ -8,6 +9,7 @@ export class WeatherApiClient {
   private baseURL = 'https://api.openweathermap.org/data/2.5';
 
   constructor() {
+    console.log(process.env.OPENWEATHERMAP_API_KEY)
     const apiKey = process.env.OPENWEATHERMAP_API_KEY;
     if (!apiKey) {
       throw new Error('OPENWEATHERMAP_API_KEY não configurado no .env');

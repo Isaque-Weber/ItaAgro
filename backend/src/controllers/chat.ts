@@ -80,7 +80,7 @@ export async function chatRoutes(app: FastifyInstance) {
         await messageRepo.save(userMsg)
 
         // Processa resposta da IA
-        const reply = await processMessageWithAssistant(session.threadId, session.assistantId, content, 0.7)
+        const reply = await processMessageWithAssistant(session.threadId, session.assistantId, content, 0.6)
 
         const assistantMsg = messageRepo.create({
             session: session,

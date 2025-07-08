@@ -1,4 +1,3 @@
-// frontend/src/pages/Login.tsx
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import logoImg from '../assets/logo-removebg-preview.png'
@@ -29,41 +28,42 @@ export function Login({ onLogin, setUserRole }: LoginProps) {
             })
 
             const resBody = await res.json().catch(() => null)
+
             if (!res.ok) {
                 setError(resBody?.message || 'Credenciais inválidas')
                 setLoading(false)
                 return
             }
 
-            // Salva o token no localStorage para uso posterior
-            if (resBody && resBody.token) {
+            if (resBody?.token) {
                 localStorage.setItem('auth_token', resBody.token)
-                console.log('Token salvo no localStorage')
+                console.log('[Login] Token salvo no localStorage')
             }
 
             const meRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
+                method: 'GET',
                 credentials: 'include',
-                headers: resBody && resBody.token 
-                    ? { 'Authorization': `Bearer ${resBody.token}` } 
-                    : undefined
+                headers: {
+                    'Authorization': resBody?.token ? `Bearer ${resBody.token}` : ''
+                }
             })
 
-            console.log('Status da resposta /auth/me após login:', meRes.status)
-
             const meBody = await meRes.json().catch(() => null)
-            console.log('Resposta de /auth/me após login:', meBody)
+            console.log('[Login] /auth/me response:', meBody)
 
             if (meRes.ok && meBody?.role) {
                 setUserRole(meBody.role)
                 onLogin()
                 navigate('/')
             } else {
-                console.error('Erro na requisição /auth/me após login:', meRes.status, meBody)
                 setError(meBody?.message || 'Erro ao obter informações do usuário')
             }
+
         } catch (err) {
-            console.error('Erro inesperado:', err)
+            console.error('[Login] Erro inesperado:', err)
             setError('Erro inesperado. Tente novamente.')
+        } finally {
+            setLoading(false)
         }
     }
 

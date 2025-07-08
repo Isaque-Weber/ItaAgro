@@ -56,8 +56,9 @@ export async function build(): Promise<FastifyInstance> {
       reply: FastifyReply
   ) {
     const user = req.user as any;
-    // Admins pulam checagem
-    if (user.role === 'admin') return;
+    // Admins e seed users pulam checagem
+    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com'];
+    if (user.role === 'admin' || SEED_USERS.includes(user.email)) return;
 
     // Busca última assinatura
     const subscriptionRepo = AppDataSource.getRepository(Subscription);

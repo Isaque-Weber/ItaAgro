@@ -1,4 +1,5 @@
 // backend/src/index.ts
+import 'reflect-metadata'
 import { AppDataSource } from './services/typeorm/data-source'
 import { build } from './app'
 

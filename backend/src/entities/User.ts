@@ -29,11 +29,17 @@ export class User {
     @Column({ type: 'boolean', default: false })
     emailVerified!: boolean
 
-    @Column({ type: 'varchar', length: 64, nullable: true })
-    verificationToken?: string
+    @Column({ type: 'varchar', length: 6, nullable: true })
+    verificationCode?: string
 
     @Column({ type: 'timestamp', nullable: true })
-    verificationTokenExpiresAt?: Date
+    verificationCodeExpiresAt?: Date
+
+    @Column({ type: 'varchar', nullable: true })
+    passwordResetCode?: string;
+
+    @Column({ type: 'timestamp', nullable: true })
+    passwordResetCodeExpiresAt?: Date;
 
     @Column({ type: 'enum', enum: ['user','admin'], default: 'user' })
     role!: 'user' | 'admin'
@@ -51,7 +57,7 @@ export class User {
     @BeforeInsert()
     @BeforeUpdate()
     private async hashPassword() {
-        if (this.password) {
+        if (this.password && !this.password.startsWith('$2b$')) {
             this.password = await bcrypt.hash(this.password, 10)
         }
     }
