@@ -2,15 +2,13 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUserPlan } from "../hooks/useUserPlan";
 import UserPlanDebug from '../components/UserPlanDebug';
+import {useAuth} from "../contexts/AuthContext";
 
-interface DashboardUsersProps {
-    onLogout: () => void
-}
-
-export default function DashboardUsers({ onLogout }: DashboardUsersProps) {
+export default function DashboardUsers() {
     const navigate = useNavigate()
     const { data, loading, error } = useUserPlan()
     const [showDebug, setShowDebug] = useState(false)
+    const { onLogout } = useAuth();
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">

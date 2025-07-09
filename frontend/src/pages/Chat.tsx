@@ -13,14 +13,13 @@ type Role = 'user' | 'assistant'
 type Message = { id: string; role: Role; content: string; createdAt: string }
 type Session = { id: string; threadId: string; createdAt: string }
 
-interface ChatProps {
-    onLogout(): void
-    userRole: 'admin' | 'user' | null
-}
+import { useAuth } from '../contexts/AuthContext';
 
-export function Chat({ onLogout, userRole }: ChatProps) {
-    const navigate = useNavigate()
-    const [searchParams] = useSearchParams()
+export function Chat() {
+    const navigate = useNavigate();
+    const { user, onLogout } = useAuth();
+    const userRole = user?.role;
+    const [searchParams] = useSearchParams();
     const initialQuestion = searchParams.get('question')
 
     const [menuOpen, setMenuOpen] = useState(false)
@@ -261,12 +260,8 @@ export function Chat({ onLogout, userRole }: ChatProps) {
     }
 
     async function logout() {
-        await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/logout`, {
-            method: 'POST',
-            credentials: 'include'
-        })
-        onLogout()
-        navigate('/login')
+        await onLogout();
+        navigate('/login');
     }
 
     return (

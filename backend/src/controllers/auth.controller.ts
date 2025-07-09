@@ -82,7 +82,7 @@ export async function authRoutes(app: FastifyInstance) {
                 maxAge: 60 * 60 * 24
             })
             .header('Authorization', `Bearer ${token}`)
-            .send({ success: true, role: user.role, token })
+            .send({ success: true, role: user.role })
     })
 
     app.post<{ Body: RecoverBody }>('/recover', async (req, reply) => {
@@ -168,4 +168,14 @@ export async function authRoutes(app: FastifyInstance) {
         return reply.send({ message: 'Senha redefinida com sucesso.' });
     });
 
+    app.post('/logout', async (req, reply) => {
+        return reply
+            .clearCookie('itaagro_token', {
+                path: '/',
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: process.env.NODE_ENV === 'production'
+            })
+            .send({ message: 'Logout realizado com sucesso.' });
+    });
 }

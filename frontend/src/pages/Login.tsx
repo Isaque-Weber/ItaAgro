@@ -1,23 +1,20 @@
-import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import logoImg from '../assets/logo-removebg-preview.png'
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import logoImg from '../assets/logo-removebg-preview.png';
+import { useAuth } from '../contexts/AuthContext';
 
-interface LoginProps {
-    onLogin: () => void
-    setUserRole: (role: string) => void
-}
-
-export function Login({ onLogin, setUserRole }: LoginProps) {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
-    const navigate = useNavigate()
+export function Login() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+    const { onLogin } = useAuth();
 
     async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
-        setLoading(true)
-        setError('')
+        e.preventDefault();
+        setLoading(true);
+        setError('');
 
         try {
             const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
@@ -25,45 +22,24 @@ export function Login({ onLogin, setUserRole }: LoginProps) {
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
-            })
+            });
 
-            const resBody = await res.json().catch(() => null)
+            const resBody = await res.json().catch(() => null);
 
             if (!res.ok) {
-                setError(resBody?.message || 'Credenciais inválidas')
-                setLoading(false)
-                return
+                setError(resBody?.message || 'Credenciais inválidas');
+                setLoading(false);
+                return;
             }
 
-            if (resBody?.token) {
-                localStorage.setItem('auth_token', resBody.token)
-                console.log('[Login] Token salvo no localStorage')
-            }
-
-            const meRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Authorization': resBody?.token ? `Bearer ${resBody.token}` : ''
-                }
-            })
-
-            const meBody = await meRes.json().catch(() => null)
-            console.log('[Login] /auth/me response:', meBody)
-
-            if (meRes.ok && meBody?.role) {
-                setUserRole(meBody.role)
-                onLogin()
-                navigate('/')
-            } else {
-                setError(meBody?.message || 'Erro ao obter informações do usuário')
-            }
+            onLogin();
+            navigate('/');
 
         } catch (err) {
-            console.error('[Login] Erro inesperado:', err)
-            setError('Erro inesperado. Tente novamente.')
+            console.error('[Login] Erro inesperado:', err);
+            setError('Erro inesperado. Tente novamente.');
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 

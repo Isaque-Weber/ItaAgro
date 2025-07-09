@@ -12,6 +12,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     onLogin: () => void;
+    onLogout: () => void;
     isSeedUser: boolean;
     setUserRole: (role: 'user' | 'admin') => void;
 }
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
     loading: true,
     isSeedUser: false,
     onLogin: () => {},
+    onLogout: () => {},
     setUserRole: () => {},
 });
 
@@ -35,20 +37,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [user?.email]);
 
     const loadUser = () => {
-        const token = localStorage.getItem('auth_token');
-        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-
-
         fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
             credentials: 'include',
-            headers,
         })
             .then((res) => {
                 if (!res.ok) throw new Error('Não autenticado');
                 return res.json();
             })
             .then((data: User) => {
-                // Se for seed user, forçamos o emailVerified como true
                 if (SEED_USERS.includes(data.email)) {
                     setUser({ ...data, emailVerified: true });
                 } else {
@@ -57,7 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             })
             .catch(() => {
                 setUser(null);
-                localStorage.removeItem('auth_token');
             })
             .finally(() => setLoading(false));
     };
@@ -67,7 +62,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const onLogin = () => {
+        setLoading(true);
         loadUser();
+    };
+
+    const onLogout = async () => {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+        });
+        setUser(null);
     };
 
     const setUserRole = (role: 'user' | 'admin') => {
@@ -77,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, onLogin, isSeedUser, setUserRole }}>
+        <AuthContext.Provider value={{ user, loading, onLogin, onLogout, isSeedUser, setUserRole }}>
             {children}
         </AuthContext.Provider>
     );

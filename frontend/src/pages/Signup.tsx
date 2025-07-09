@@ -1,6 +1,7 @@
 // frontend/src/pages/Signup.tsx
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import {useAuth} from "../contexts/AuthContext"
 
 interface SignupForm {
     name: string
@@ -8,12 +9,7 @@ interface SignupForm {
     password: string
 }
 
-interface SignupProps {
-    onLogin(): void
-    setUserRole(role: string): void
-}
-
-export function Signup({ onLogin, setUserRole }: SignupProps) {
+export function Signup() {
     const navigate = useNavigate()
     const [form, setForm] = useState<SignupForm>({
         name: '',
@@ -22,6 +18,7 @@ export function Signup({ onLogin, setUserRole }: SignupProps) {
     })
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const { onLogin, setUserRole } = useAuth()
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm(f => ({ ...f, [e.target.name]: e.target.value }))

@@ -1,6 +1,7 @@
 // frontend/src/pages/SubscribePage.tsx
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {useAuth} from "../contexts/AuthContext"
 
 interface Plan {
   id: string
@@ -11,15 +12,12 @@ interface Plan {
   repetitions?: number
 }
 
-interface SubscribePageProps {
-  onLogout(): void
-}
-
-export function SubscribePage({ onLogout }: SubscribePageProps) {
+export function SubscribePage() {
   const navigate = useNavigate()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { onLogout } = useAuth();
 
   useEffect(() => {
     fetchPlans()

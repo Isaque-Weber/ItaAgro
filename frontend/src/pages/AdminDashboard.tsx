@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { AdminUsers } from './AdminUsers'
 import { AdminSubscriptions } from './AdminSubscriptions'
+import {useAuth} from "../contexts/AuthContext";
 
-export function AdminDashboard({ onLogout }: { onLogout: () => void }) {
+export function AdminDashboard() {
+    const { onLogout } = useAuth();
     const [tab, setTab] = useState<'users' | 'subscriptions'>('users')
 
     return (
