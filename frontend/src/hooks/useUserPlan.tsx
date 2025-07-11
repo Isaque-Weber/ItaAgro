@@ -1,5 +1,8 @@
 // src/hooks/useUserPlan.ts
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 interface UserPlan {
     name: string;           // nome do usuário
@@ -10,16 +13,6 @@ interface UserPlan {
     limit: number;          // limite de perguntas
     planId: string;        // ID do plano
 }
-
-// Determine the backend URL based on the environment
-const getBackendUrl = () => {
-    // In development, use localhost:4000
-    if (window.location.hostname === 'localhost') {
-        return 'http://localhost:4000';
-    }
-    // In production, use the deployed backend URL
-    return 'https://itaagro-backend.up.railway.app';
-};
 
 // Helper function to add timeout to fetch
 const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 10000) => {
@@ -65,7 +58,7 @@ export function useUserPlan() {
 
     useEffect(() => {
         setLoading(true);
-        const backendUrl = getBackendUrl();
+        const backendUrl = import.meta.env.VITE_API_BASE_URL
         const apiUrl = `${backendUrl}/api/user/plan`;
 
         console.log(`Fetching user plan from: ${apiUrl}`);
