@@ -6,6 +6,7 @@ interface SubscriptionInfo {
     id: string
     status: string
     next_payment_date?: string
+    plan?: string
     // adicione outros campos que precisar
 }
 
@@ -20,29 +21,32 @@ export function SuccessPage() {
         || searchParams.get('subscriptionId')
         || ''
 
-    const statusParam = searchParams.get('status')  // por exemplo 'authorized'
-
-    // Opcional: buscar detalhes no backend
+    // 🚩 Troca GET por POST para /subscriptions/confirm
     useEffect(() => {
         if (!subscriptionId) return
         setLoading(true)
         fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/api/subscriptions/${subscriptionId}`,
-            { credentials: 'include' }
+            `${import.meta.env.VITE_API_BASE_URL}/api/subscriptions/confirm`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ preapproval_id: subscriptionId })
+            }
         )
-            .then(res => {
-                if (!res.ok) throw new Error(`Status ${res.status}`)
-                return res.json()
-            })
-            .then((data: SubscriptionInfo) => {
-                setInfo(data)
+            .then(res => res.json())
+            .then((data: any) => {
+                if (!data || ('error' in data)) throw new Error((data && data.error) || 'Erro inesperado')
+                setInfo(data as SubscriptionInfo)
             })
             .catch(err => {
-                console.error(err)
-                setError('Não foi possível carregar os detalhes da assinatura.')
+                setError('Não foi possível confirmar sua assinatura. ' + (err?.message ?? ''))
             })
             .finally(() => setLoading(false))
     }, [subscriptionId])
+
+    // Define o status real da assinatura
+    const status = info?.status
 
     return (
         <main className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-4 transition-colors duration-300">
@@ -58,11 +62,24 @@ export function SuccessPage() {
                             Voltar aos Planos
                         </button>
                     </>
-                ) : statusParam !== 'authorized' && statusParam !== 'pending' ? (
+                ) : loading ? (
+                    <p className="text-center">Carregando detalhes...</p>
+                ) : error ? (
+                    <>
+                        <h1 className="text-2xl font-semibold mb-4 text-center">Pagamento não concluído</h1>
+                        <p className="text-center text-red-500">{error}</p>
+                        <button
+                            onClick={() => navigate('/subscribe')}
+                            className="mt-6 w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded"
+                        >
+                            Tentar Novamente
+                        </button>
+                    </>
+                ) : status !== 'authorized' && status !== 'active' ? (
                     <>
                         <h1 className="text-2xl font-semibold mb-4 text-center">Pagamento não concluído</h1>
                         <p className="text-center">
-                            Seu pagamento não foi autorizado (status: <strong>{statusParam}</strong>).
+                            Seu pagamento não foi autorizado (status: <strong>{status}</strong>).
                         </p>
                         <button
                             onClick={() => navigate('/subscribe')}
@@ -76,14 +93,15 @@ export function SuccessPage() {
                         <h1 className="text-2xl font-semibold mb-4 text-center">
                             🎉 Assinatura Confirmada!
                         </h1>
-                        {loading ? (
-                            <p className="text-center">Carregando detalhes...</p>
-                        ) : error ? (
-                            <p className="text-center text-red-500">{error}</p>
-                        ) : info ? (
+                        {info ? (
                             <div className="space-y-2">
                                 <p><strong>ID:</strong> {info.id}</p>
                                 <p><strong>Status:</strong> {info.status}</p>
+                                {info.plan && (
+                                    <p>
+                                        <strong>Plano:</strong> {info.plan}
+                                    </p>
+                                )}
                                 {info.next_payment_date && (
                                     <p>
                                         <strong>Próximo pagamento:</strong>{' '}

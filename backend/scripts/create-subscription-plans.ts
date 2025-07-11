@@ -5,7 +5,7 @@ dotenv.config({ path: '../.env' })
 
 async function createSubscriptionPlans() {
   // const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN!
-  const accessToken = "TEST-5772208681435317-062516-feb970665146b851e0bca4181305d715-452236309"
+  const accessToken = "APP_USR-176544912800217-061814-a6af32f79a311bd50acfaed4a18f433d-239692469"
   const config = new MercadoPagoConfig({
     accessToken,
     options: { timeout: 5000 }

@@ -1,8 +1,12 @@
 // src/controllers/subscription.ts
-import {FastifyInstance, FastifyRequest} from 'fastify';
-import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago';
-import dotenv from 'dotenv';
-dotenv.config({ path: '../.env' });
+import {FastifyInstance, FastifyRequest} from 'fastify'
+import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago'
+import dotenv from 'dotenv'
+import { AppDataSource } from '../services/typeorm/data-source'
+import { Subscription, SubscriptionStatus } from '../entities/Subscription'
+import { User } from '../entities/User'
+import { MercadoPagoClient, transformMercadoPagoStatus } from '../services/mercadopago'
+dotenv.config({ path: '../.env' })
 
 interface AuthenticatedRequest extends FastifyRequest<{
   Body: { planId: string }
@@ -19,17 +23,17 @@ export async function subscriptionRoutes(app: FastifyInstance) {
   const mpConfig = new MercadoPagoConfig({
     accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
     options: { timeout: 5000 }
-  });
+  })
 
   // 🎯 GET /plans — lista todos os planos ativos de assinatura
   app.get('/plans', { preHandler: [app.authenticate] }, async (req, reply) => {
     try {
-      const planClient = new PreApprovalPlan(mpConfig);
-      const res = await planClient.search({ options: { status: 'active' } });
+      const planClient = new PreApprovalPlan(mpConfig)
+      const res = await planClient.search({ options: { status: 'active' } })
 
       const plans = (res.results ?? []).map(plan => {
         // para planos ativos, auto_recurring e init_point sempre existem
-        const ar = plan.auto_recurring!;
+        const ar = plan.auto_recurring!
         return {
           id:            plan.id!,
           reason:        plan.reason!,
@@ -38,15 +42,15 @@ export async function subscriptionRoutes(app: FastifyInstance) {
           frequency:           ar.frequency,
           repetitions:         ar.repetitions,
           init_point:          plan.init_point!
-        };
-      });
+        }
+      })
 
-      return reply.code(200).send(plans);
+      return reply.code(200).send(plans)
     } catch (err) {
-      app.log.error(err, 'Error fetching subscription plans');
-      return reply.code(500).send({ error: 'Failed to fetch subscription plans' });
+      app.log.error(err, 'Error fetching subscription plans')
+      return reply.code(500).send({ error: 'Failed to fetch subscription plans' })
     }
-  });
+  })
 
   app.post(
       '/checkout',
@@ -161,6 +165,72 @@ export async function subscriptionRoutes(app: FastifyInstance) {
         const mpJson = await mpRes.json()
         const active = mpJson.results?.some((p:any) => p.status === 'authorized' || p.status === 'paused')
         return reply.send({ subscribed: !!active })
+      }
+  )
+  app.post(
+      '/subscriptions/confirm',
+      { preHandler: [app.authenticate] },
+      async (req, reply) => {
+        const { preapproval_id } = req.body as { preapproval_id: string }
+        const { sub: userId } = req.user as any
+
+        if (!preapproval_id) {
+          return reply.code(400).send({ error: 'preapproval_id não fornecido' })
+        }
+
+        try {
+          // Consulta assinatura no Mercado Pago
+          const mp = new MercadoPagoClient()
+          const mpSub = await mp.getSubscription(preapproval_id)
+
+          if (!mpSub) {
+            return reply.code(404).send({ error: 'Assinatura não encontrada no Mercado Pago' })
+          }
+
+          // Busca user pelo userId (sempre associar ao logado!)
+          const userRepo = AppDataSource.getRepository(User)
+          const user = await userRepo.findOne({ where: { id: userId } })
+          if (!user) {
+            return reply.code(404).send({ error: 'Usuário não encontrado' })
+          }
+
+          // Busca ou cria assinatura local
+          const subscriptionRepo = AppDataSource.getRepository(Subscription)
+          let sub = await subscriptionRepo.findOne({
+            where: { externalId: preapproval_id },
+            relations: ['user'],
+          })
+
+          if (sub) {
+            // Atualiza assinatura existente
+            sub.status = transformMercadoPagoStatus(mpSub.status) as SubscriptionStatus
+            sub.expiresAt = mpSub.end_date ? new Date(mpSub.end_date) : undefined
+            sub.plan = mpSub.reason
+            sub.updatedAt = new Date()
+            sub.user = user // reforça vínculo
+            await subscriptionRepo.save(sub)
+          } else {
+            // Cria nova assinatura
+            sub = subscriptionRepo.create({
+              externalId: preapproval_id,
+              status: transformMercadoPagoStatus(mpSub.status) as SubscriptionStatus,
+              user,
+              expiresAt: mpSub.end_date ? new Date(mpSub.end_date) : undefined,
+              plan: mpSub.reason,
+            })
+            await subscriptionRepo.save(sub)
+          }
+
+          return reply.send({
+            id: sub.externalId,
+            status: sub.status,
+            next_payment_date: mpSub.next_payment_date,
+            plan: sub.plan,
+          })
+        } catch (error: any) {
+          app.log.error('Erro ao confirmar assinatura:', error)
+          return reply.code(500).send({ error: 'Erro ao confirmar assinatura' })
+        }
       }
   )
 }
