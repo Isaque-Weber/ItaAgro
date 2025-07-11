@@ -1,8 +1,5 @@
 // src/hooks/useUserPlan.ts
 import { useEffect, useState } from 'react'
-import dotenv from 'dotenv'
-
-dotenv.config()
 
 interface UserPlan {
     name: string;           // nome do usuário
