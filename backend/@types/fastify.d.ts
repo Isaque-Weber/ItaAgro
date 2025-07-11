@@ -1,5 +1,4 @@
-import 'fastify';
-import { FastifyRequest, FastifyReply } from 'fastify';
+import 'fastify'
 
 declare module 'fastify' {
   interface FastifyInstance {

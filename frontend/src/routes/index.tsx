@@ -50,7 +50,7 @@ export function AppRoutes() {
             <Route
                 path="/subscribe"
                 element={
-                    <ProtectedRoute>
+                    <ProtectedRoute requireSubscription={false}>
                         <SubscribePage />
                     </ProtectedRoute>
                 }

@@ -7,6 +7,7 @@ import {
     sendVerificationCodeEmail,
     sendPasswordResetCodeEmail
 } from '../utils/mailer'
+// import '../../@types/fastify-jwt' // Importa as definições de tipos do fastify-jwt
 
 interface SignupBody {
     name: string
@@ -99,7 +100,7 @@ export async function authRoutes(app: FastifyInstance) {
         return reply.send({ message: 'Código de recuperação enviado.' })
     })
 
-    app.post<{ Body: { email: string; code: string } }>('/verify-email-code', async (req, reply) => {
+    app.post<{ Body: { email: string, code: string } }>('/verify-email-code', async (req, reply) => {
         const { email, code } = req.body
         const user = await repo.findOneBy({ email })
 
@@ -120,15 +121,31 @@ export async function authRoutes(app: FastifyInstance) {
         user.verificationCodeExpiresAt = undefined
         await repo.save(user)
 
-        return reply.send({ message: 'E-mail verificado com sucesso.' })
+        const token = app.jwt.sign(
+            { sub: user.id, email: user.email, role: user.role },
+            { expiresIn: '1d' }
+        )
+
+        return reply
+            .setCookie('itaagro_token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                path: '/',
+                maxAge: 60 * 60 * 24
+            })
+            .header('Authorization', `Bearer ${token}`)
+            .send({ message: 'E-mail verificado com sucesso.' })
     })
 
     app.get('/me', async (req, reply) => {
         try {
-            const token = req.headers.authorization?.replace('Bearer ', '') || ''
-            const decoded = app.jwt.verify(token) as any
-
-            const user = await repo.findOneBy({ id: decoded.sub })
+            // Tenta verificar o JWT (pega do cookie automaticamente se configurado)
+            await req.jwtVerify()
+            // req.user já tem o payload do token (sub, email, role, etc)
+            // @ts-ignore
+            const userId = String(req.user.sub)
+            const user = await repo.findOneBy({ id: userId })
             if (!user) return reply.code(401).send({ message: 'Não autenticado' })
 
             const isSeed = SEED_USERS.includes(user.email)
@@ -137,36 +154,37 @@ export async function authRoutes(app: FastifyInstance) {
                 sub: user.id,
                 email: user.email,
                 role: user.role,
-                emailVerified: isSeed ? true : user.emailVerified // <<< FORÇA AQUI
+                emailVerified: isSeed ? true : user.emailVerified
             })
-        } catch {
+        } catch (err) {
             return reply.code(401).send({ message: 'Não autenticado' })
         }
     })
-    app.post<{ Body: { email: string; code: string; newPassword: string } }>('/reset-password', async (req, reply) => {
-        const { email, code, newPassword } = req.body;
-        const user = await repo.findOneBy({ email });
+
+    app.post<{ Body: { email: string, code: string, newPassword: string } }>('/reset-password', async (req, reply) => {
+        const { email, code, newPassword } = req.body
+        const user = await repo.findOneBy({ email })
 
         if (!user || !user.passwordResetCode || !user.passwordResetCodeExpiresAt) {
-            return reply.code(400).send({ message: 'Código inválido.' });
+            return reply.code(400).send({ message: 'Código inválido.' })
         }
 
         if (user.passwordResetCode !== code) {
-            return reply.code(400).send({ message: 'Código incorreto.' });
+            return reply.code(400).send({ message: 'Código incorreto.' })
         }
 
         if (user.passwordResetCodeExpiresAt < new Date()) {
-            return reply.code(400).send({ message: 'Código expirado.' });
+            return reply.code(400).send({ message: 'Código expirado.' })
         }
 
         user.password = newPassword
-        user.passwordResetCode = undefined;
-        user.passwordResetCodeExpiresAt = undefined;
+        user.passwordResetCode = undefined
+        user.passwordResetCodeExpiresAt = undefined
 
-        await repo.save(user);
+        await repo.save(user)
 
-        return reply.send({ message: 'Senha redefinida com sucesso.' });
-    });
+        return reply.send({ message: 'Senha redefinida com sucesso.' })
+    })
 
     app.post('/logout', async (req, reply) => {
         return reply
@@ -176,6 +194,19 @@ export async function authRoutes(app: FastifyInstance) {
                 sameSite: 'lax',
                 secure: process.env.NODE_ENV === 'production'
             })
-            .send({ message: 'Logout realizado com sucesso.' });
-    });
+            .send({ message: 'Logout realizado com sucesso.' })
+    })
+
+    app.post<{ Body: { email: string } }>('/resend-verification-code', async (req, reply) => {
+        const { email } = req.body
+        const user = await repo.findOneBy({ email })
+        if (!user) return reply.code(400).send({ message: 'Usuário não encontrado.' })
+
+        const code = crypto.randomInt(100000, 999999).toString()
+        user.verificationCode = code
+        user.verificationCodeExpiresAt = new Date(Date.now() + 15 * 60 * 1000)
+        await repo.save(user)
+        await sendVerificationCodeEmail(email, code)
+        return reply.send({ message: 'Novo código enviado.' })
+    })
 }

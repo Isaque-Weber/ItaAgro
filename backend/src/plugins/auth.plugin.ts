@@ -48,7 +48,7 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
     // 4) Middleware de autenticação
     fastify.decorate('authenticate', async (req, reply) => {
         try {
-            await req.jwtVerify();
+            await req.jwtVerify()
             req.user = req.user || (req as any).jwtPayload;
         } catch (err) {
             const token = req.cookies['itaagro_token'];

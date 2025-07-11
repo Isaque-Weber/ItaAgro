@@ -1,7 +1,7 @@
 // frontend/src/pages/SubscribePage.tsx
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {useAuth} from "../contexts/AuthContext"
+import { useAuth } from "../contexts/AuthContext"
 
 interface Plan {
   id: string
@@ -10,6 +10,7 @@ interface Plan {
   frequency_type: 'months'
   frequency: number
   repetitions?: number
+  init_point?: string
 }
 
 export function SubscribePage() {
@@ -21,6 +22,7 @@ export function SubscribePage() {
 
   useEffect(() => {
     fetchPlans()
+    // eslint-disable-next-line
   }, [])
 
   async function fetchPlans() {
@@ -31,17 +33,12 @@ export function SubscribePage() {
           `${import.meta.env.VITE_API_BASE_URL}/api/plans`,
           { credentials: 'include' }
       )
-      if (res.status === 401) {
-        setError('Sua sessão expirou. Faça login novamente.')
-        return
-      }
       if (!res.ok) {
         setError(`Falha ao buscar planos (status ${res.status})`)
         return
       }
       setPlans(await res.json())
     } catch (err: any) {
-      console.error('Error fetching plans:', err)
       setError(err.message || 'Erro ao carregar planos')
     } finally {
       setLoading(false)
@@ -112,11 +109,12 @@ export function SubscribePage() {
               ) : (
                   plans.map(plan => {
                     const description = formatPlanDescription(plan)
-                    const total =
-                        plan.repetitions
-                            ? formatCurrency(plan.transaction_amount * plan.repetitions)
-                            : null
-                    const href = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${plan.id}`
+                    const total = plan.repetitions
+                        ? formatCurrency(plan.transaction_amount * plan.repetitions)
+                        : null
+                    const href = plan.init_point
+                        ? plan.init_point
+                        : `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${plan.id}`
 
                     return (
                         <div
@@ -136,7 +134,6 @@ export function SubscribePage() {
                                 </p>
                             )}
                           </div>
-                          {/* Injetar name via any para o script do Mercado Pago */}
                           <a
                               {...({ name: 'MP-payButton' } as any)}
                               href={href}

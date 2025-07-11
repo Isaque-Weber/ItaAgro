@@ -26,11 +26,11 @@ const AuthContext = createContext<AuthContextType>({
     setUserRole: () => {},
 });
 
-const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com'];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com'];
 
     const isSeedUser = useMemo(() => {
         return user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com';
@@ -38,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const loadUser = () => {
         fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
+            method: 'GET',
             credentials: 'include',
         })
             .then((res) => {

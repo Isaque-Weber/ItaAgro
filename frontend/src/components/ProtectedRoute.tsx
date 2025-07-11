@@ -4,12 +4,13 @@ import { Navigate } from 'react-router-dom';
 import { useSubscription } from '../hooks/useSubscription';
 import { useUser } from '../contexts/AuthContext';
 
-export function ProtectedRoute({ children }: { children: JSX.Element }) {
+export function ProtectedRoute({ children, requireSubscription = true }: { children: JSX.Element, requireSubscription?: boolean }) {
     const { checking, subscribed } = useSubscription();
     const { user, loading: authLoading } = useUser();
     const isSeedUser = user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com';
 
     if (authLoading || checking) {
+        console.log('loading')
         return <div>Carregando…</div>;
     }
 
@@ -26,7 +27,7 @@ export function ProtectedRoute({ children }: { children: JSX.Element }) {
         return <Navigate to="/verify-email" replace />;
     }
 
-    if (!subscribed) {
+    if (requireSubscription && !subscribed) {
         return <Navigate to="/subscribe" replace />;
     }
 

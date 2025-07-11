@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {useAuth} from "../contexts/AuthContext";
 
 export default function VerifyEmail() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -7,6 +8,7 @@ export default function VerifyEmail() {
   const [message, setMessage] = useState('');
   const [timer, setTimer] = useState(0);
   const [email, setEmail] = useState('');
+  const { onLogin } = useAuth();
 
   const navigate = useNavigate();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -69,6 +71,7 @@ export default function VerifyEmail() {
       const data = await res.json();
 
       if (res.ok) {
+        onLogin()
         setStatus('success');
         setMessage('E-mail verificado com sucesso! Redirecionando...');
         setTimeout(() => navigate('/subscribe'), 2000);
@@ -110,8 +113,8 @@ export default function VerifyEmail() {
   return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
         <div className="max-w-md w-full bg-white dark:bg-gray-800 p-6 rounded shadow-md text-center">
-          <h2 className="text-xl font-bold mb-4">Verifique seu e-mail</h2>
-          <p className="mb-4">
+          <h2 className="text-xl font-bold mb-4 text-gray-700 dark:text-gray-300">Verifique seu e-mail</h2>
+          <p className="mb-4 text-gray-700 dark:text-gray-300">
             Enviamos um código de 6 dígitos para <b>{email}</b>. Digite-o abaixo para ativar sua conta.
           </p>
 
