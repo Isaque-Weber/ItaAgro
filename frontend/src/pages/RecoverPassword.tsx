@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useNavigate, Link } from 'react-router-dom'
 
@@ -9,12 +9,24 @@ export function RecoverPassword() {
     const navigate = useNavigate()
     const [step, setStep] = useState<'request' | 'reset'>('request')
     const [email, setEmail] = useState('')
+
+
+    // Novo: estado do código por dígito (array)
+    const [code, setCode] = useState(['', '', '', '', '', ''])
+    const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
     const {
         register,
         handleSubmit,
+        setValue,
         formState: { errors, isSubmitting },
         watch,
     } = useForm<EmailForm & ResetForm>()
+
+    // Integração para atualizar valor do campo 'code' no hook form
+    React.useEffect(() => {
+        setValue('code', code.join(''))
+    }, [code, setValue])
 
     const onSubmit: SubmitHandler<EmailForm & ResetForm> = async (data) => {
         if (step === 'request') {
@@ -37,13 +49,17 @@ export function RecoverPassword() {
         }
 
         if (step === 'reset') {
+            if (code.join('').length < 6) {
+                alert('Informe o código de 6 dígitos.')
+                return
+            }
             try {
                 const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/reset-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email,
-                        code: data.code,
+                        code: code.join(''),
                         newPassword: data.newPassword,
                     }),
                 })
@@ -59,6 +75,24 @@ export function RecoverPassword() {
             }
         }
     }
+
+    // Lógica do input de código, igual ao VerifyEmail
+    const handleCodeChange = (idx: number, value: string) => {
+        if (!/^[0-9]?$/.test(value)) return;
+        const newCode = [...code];
+        newCode[idx] = value;
+        setCode(newCode);
+        if (value && idx < 5) inputRefs.current[idx + 1]?.focus();
+        if (!value && idx > 0) inputRefs.current[idx - 1]?.focus();
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        const paste = e.clipboardData.getData('text').replace(/\D/g, '');
+        if (paste.length === 6) {
+            setCode(paste.split(''));
+            inputRefs.current[5]?.focus();
+        }
+    };
 
     const password = watch('newPassword')
 
@@ -91,11 +125,22 @@ export function RecoverPassword() {
                     <>
                         <div className="mb-4">
                             <label className="block text-gray-700 dark:text-gray-200 mb-1">Código</label>
-                            <input
-                                type="text"
-                                {...register('code', { required: 'Código é obrigatório' })}
-                                className={`w-full px-3 py-2 border rounded focus:outline-none dark:bg-gray-700 dark:text-white ${errors.code ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                            />
+                            <div className="flex gap-2 mb-1">
+                                {code.map((digit, idx) => (
+                                    <input
+                                        key={idx}
+                                        ref={el => { inputRefs.current[idx] = el; }}
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={1}
+                                        className="w-10 h-12 text-2xl text-center border rounded border-gray-300 dark:border-gray-600 focus:border-green-600 outline-none"
+                                        value={digit}
+                                        onChange={e => handleCodeChange(idx, e.target.value)}
+                                        onPaste={handlePaste}
+                                        autoFocus={idx === 0}
+                                    />
+                                ))}
+                            </div>
                             {errors.code && <p className="text-red-500 text-sm mt-1">{errors.code.message}</p>}
                         </div>
 
@@ -131,7 +176,9 @@ export function RecoverPassword() {
                     disabled={isSubmitting}
                     className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded disabled:opacity-50 mb-4"
                 >
-                    {step === 'request' ? (isSubmitting ? 'Enviando...' : 'Enviar e-mail') : (isSubmitting ? 'Redefinindo...' : 'Redefinir Senha')}
+                    {step === 'request'
+                        ? (isSubmitting ? 'Enviando...' : 'Enviar e-mail')
+                        : (isSubmitting ? 'Redefinindo...' : 'Redefinir Senha')}
                 </button>
 
                 <div className="text-center text-sm">

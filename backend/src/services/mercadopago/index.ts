@@ -15,6 +15,17 @@ export class MercadoPagoClient {
     this.accessToken = token;
   }
 
+  async cancelSubscription(id: string) {
+    try {
+      await axios.put(`${this.baseURL}/preapproval/${id}`,
+          { status: 'cancelled' },
+          { headers: { 'Authorization': `Bearer ${this.accessToken}` } }
+      );
+    } catch (error) {
+      throw new Error('Erro ao cancelar no Mercado Pago');
+    }
+  }
+
   /**
    * Consulta detalhes de uma assinatura (preapproval) pelo ID
    * @returns Detalhes da assinatura ou null se não encontrada (404)

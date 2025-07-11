@@ -1,5 +1,5 @@
 // src/controllers/subscription.ts
-import {FastifyInstance, FastifyRequest} from 'fastify'
+import { FastifyInstance, FastifyRequest, FastifyReply, RouteShorthandOptions } from 'fastify';
 import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago'
 import dotenv from 'dotenv'
 import { AppDataSource } from '../services/typeorm/data-source'
@@ -17,6 +17,7 @@ interface AuthenticatedRequest extends FastifyRequest<{
     role:  string
   }
 }
+type CancelBody = { preapproval_id: string }
 
 export async function subscriptionRoutes(app: FastifyInstance) {
   // configura o client do Mercado Pago
@@ -24,6 +25,16 @@ export async function subscriptionRoutes(app: FastifyInstance) {
     accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
     options: { timeout: 5000 }
   })
+  const cancelOpts: RouteShorthandOptions = {
+    preHandler: [app.authenticate],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['preapproval_id'],
+        properties: { preapproval_id: { type: 'string' } },
+      },
+    },
+  };
 
   // 🎯 GET /plans — lista todos os planos ativos de assinatura
   app.get('/plans', { preHandler: [app.authenticate] }, async (req, reply) => {
@@ -52,9 +63,37 @@ export async function subscriptionRoutes(app: FastifyInstance) {
     }
   })
 
-  app.post(
-      '/checkout',
-      {
+  app.get('/user/plan', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { sub: userId } = req.user as any
+    const subscriptionRepo = AppDataSource.getRepository(Subscription)
+    const userRepo = AppDataSource.getRepository(User)
+
+    const user = await userRepo.findOne({ where: { id: userId } })
+    if (!user) return reply.code(404).send({ error: 'Usuário não encontrado' })
+
+    // Busca a assinatura ativa/authorized do usuário
+    const subscription = await subscriptionRepo
+        .createQueryBuilder('subscription')
+        .leftJoinAndSelect('subscription.user', 'user')
+        .where('user.id = :userId', { userId })
+        .andWhere('subscription.status IN (:...statuses)', { statuses: ['authorized', 'active'] })
+        .orderBy('subscription.updatedAt', 'DESC')
+        .getOne()
+
+    if (!subscription) return reply.code(404).send({ error: 'Assinatura não encontrada' })
+
+    // Estrutura de resposta para o frontend
+    return reply.send({
+      name: user.name,
+      email: user.email,
+      plan: subscription.plan,
+      endDate: subscription.expiresAt,
+      planId: subscription.externalId,
+    })
+  })
+
+
+  app.post('/checkout', {
         preHandler: [app.authenticate],
         schema: {
           body: {
@@ -233,4 +272,32 @@ export async function subscriptionRoutes(app: FastifyInstance) {
         }
       }
   )
+
+  app.post<{ Body: CancelBody }>('/subscriptions/cancel', cancelOpts,
+      async (req: FastifyRequest<{ Body: CancelBody }>, reply: FastifyReply) => {
+        const { preapproval_id } = req.body;
+        if (!preapproval_id) {
+          return reply.code(400).send({ error: 'preapproval_id obrigatório' });
+        }
+        try {
+          const mp = new MercadoPagoClient();
+          // Cancela no MP
+          await mp.cancelSubscription(preapproval_id);
+
+          // Atualiza status no banco
+          const subscriptionRepo = AppDataSource.getRepository(Subscription);
+          await subscriptionRepo.update(
+              { externalId: preapproval_id },
+              { status: SubscriptionStatus.CANCELED }
+          );
+
+          return reply.send({ success: true });
+        } catch (err: any) {
+          app.log.error('Erro ao cancelar assinatura:', err);
+          return reply.code(500).send({ error: 'Erro ao cancelar assinatura' });
+        }
+      }
+  );
+
+
 }

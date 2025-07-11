@@ -5,9 +5,10 @@ interface UserPlan {
     name: string;           // nome do usuário
     email: string;          // email do usuário
     status: string;         // status do plano
-    planName?: string;      // nome do plano (para compatibilidade com componentes existentes)
+    plan?: string;      // nome do plano (para compatibilidade com componentes existentes)
     endDate: string;        // validade
     limit: number;          // limite de perguntas
+    planId: string;        // ID do plano
 }
 
 // Determine the backend URL based on the environment
