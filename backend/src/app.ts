@@ -29,13 +29,17 @@ export async function build(): Promise<FastifyInstance> {
       const allowed = [
         'http://localhost:5173',
         'https://itaagro.up.railway.app'
-      ];
-      if (!origin || allowed.includes(origin)) cb(null, true);
-      else cb(new Error('Not allowed by CORS'), false);
+      ]
+      if (!origin || allowed.includes(origin)) {
+        cb(null, true)
+      } else {
+        cb(new Error('Not allowed by CORS'), false)
+      }
     },
     credentials: true,
-    methods: ['GET','POST','PUT','DELETE','OPTIONS']
-  });
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
 
   // 2) Autenticação (cookie + JWT)
   await app.register(authPlugin);
