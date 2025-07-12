@@ -91,7 +91,6 @@ Você pode verificar quais arquivos foram modificados usando:
 ```
 git status
 ```
-
 ## 2. Adicionar as mudanças ao stage
 
 Para adicionar os arquivos modificados ao stage:
