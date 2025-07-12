@@ -122,7 +122,12 @@ export async function authRoutes(app: FastifyInstance) {
         await repo.save(user)
 
         const token = app.jwt.sign(
-            { sub: user.id, email: user.email, role: user.role },
+            {
+                sub: user.id,
+                email: user.email,
+                role: user.role,
+                emailVerified: user.emailVerified
+            },
             { expiresIn: '1d' }
         )
 
