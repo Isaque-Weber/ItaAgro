@@ -65,6 +65,7 @@ export default function VerifyEmail() {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/verify-email-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ code: code.join(''), email }),
       });
 
