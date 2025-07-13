@@ -1,7 +1,7 @@
 // frontend/src/pages/Signup.tsx
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import {useAuth} from "../contexts/AuthContext"
+import { useAuth } from "../contexts/AuthContext"
 
 interface SignupForm {
     name: string
@@ -16,6 +16,7 @@ export function Signup() {
         email: '',
         password: '',
     })
+    const [acceptedTerms, setAcceptedTerms] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const { onLogin, setUserRole } = useAuth()
@@ -27,13 +28,19 @@ export function Signup() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
+
+        if (!acceptedTerms) {
+            setError("Você deve aceitar os Termos de Uso e a Política de Privacidade.")
+            return
+        }
+
         setLoading(true)
         try {
             const res = await fetch(
                 `${import.meta.env.VITE_API_BASE_URL}/auth/signup`,
                 {
                     method: 'POST',
-                    credentials: 'include', // para receber cookie HttpOnly
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(form),
                 }
@@ -43,10 +50,8 @@ export function Signup() {
                 throw new Error(body.message || `Erro ${res.status}`)
             }
 
-            // Após cadastro, exibe mensagem de verificação
             setLoading(false)
             navigate('/verify-email?afterSignup=1&email=' + encodeURIComponent(form.email))
-            return
         } catch (err: any) {
             setError(err.message ?? 'Falha ao cadastrar')
             setLoading(false)
@@ -98,6 +103,27 @@ export function Signup() {
                     required
                     className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
+
+                <div className="text-sm text-gray-700 dark:text-gray-300 flex items-start space-x-2">
+                    <input
+                        type="checkbox"
+                        id="acceptTerms"
+                        checked={acceptedTerms}
+                        onChange={e => setAcceptedTerms(e.target.checked)}
+                        className="mt-1"
+                        required
+                    />
+                    <label htmlFor="acceptTerms">
+                        Eu li e concordo com os{' '}
+                        <Link to="/termos" target="_blank" className="underline text-blue-600 dark:text-blue-400">
+                            Termos de Uso
+                        </Link>{' '}
+                        e a{' '}
+                        <Link to="/privacidade" target="_blank" className="underline text-blue-600 dark:text-blue-400">
+                            Política de Privacidade
+                        </Link>.
+                    </label>
+                </div>
 
                 <button
                     type="submit"
