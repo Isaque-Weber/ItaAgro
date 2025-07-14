@@ -1,16 +1,10 @@
-// frontend/src/pages/PrivacyPage.tsx
 import React from 'react'
+import ReactMarkdown from 'react-markdown'
 
-export function PrivacyPage() {
-    return (
-        <div className="max-w-3xl mx-auto p-6 text-gray-800 dark:text-gray-100">
-            <h1 className="text-2xl font-bold mb-4">Política de Privacidade</h1>
-            <p className="mb-4">
-                Esta política descreve como o ItaAgro AIChat coleta, usa e protege seus dados...
-            </p>
-              # Política de Privacidade - ItaAgro AIChat
+const markdown = `
+# Política de Privacidade - ItaAgro AIChat
 
-Última atualização: [DATA]
+Última atualização: 13/07/2025
 
 O ItaAgro AIChat respeita a sua privacidade e está comprometido com a proteção dos seus dados pessoais. Esta Política explica como coletamos, usamos, armazenamos e compartilhamos suas informações, em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 - LGPD).
 
@@ -18,7 +12,7 @@ O ItaAgro AIChat respeita a sua privacidade e está comprometido com a proteçã
 
 Somos responsáveis pela operação do aplicativo ItaAgro AIChat, uma plataforma de assistência virtual por inteligência artificial voltada ao setor agropecuário.
 
-Em caso de dúvidas, entre em contato pelo e-mail: **[email@itaagro.com]**.
+Em caso de dúvidas, entre em contato pelo e-mail: **itasistemaia@gmail.com**
 
 ## 2. Dados que coletamos
 
@@ -64,7 +58,7 @@ Nos termos da LGPD, você pode:
 - Revogar o consentimento;
 - Portar os dados para outro serviço.
 
-Para exercer esses direitos, envie um e-mail para **[email@itaagro.com]**.
+Para exercer esses direitos, envie um e-mail para **contato@itaagro.com**
 
 ## 7. Segurança da informação
 
@@ -77,11 +71,14 @@ Esta Política pode ser atualizada periodicamente. Notificaremos os usuários em
 ---
 
 **Aceite**: Ao utilizar o ItaAgro AIChat, você concorda com esta Política de Privacidade.
+`
 
-
-            <p>
-                [Insira aqui o conteúdo completo da Política de Privacidade gerada anteriormente.]
-            </p>
+export function PrivacyPage() {
+    return (
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-10 px-4">
+            <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 md:p-10 prose dark:prose-invert">
+                <ReactMarkdown>{markdown}</ReactMarkdown>
+            </div>
         </div>
     )
 }
