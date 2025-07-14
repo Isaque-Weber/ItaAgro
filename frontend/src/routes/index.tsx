@@ -11,6 +11,9 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { GoogleCallback } from '../pages/GoogleCallback';
 import VerifyEmail from '../pages/VerifyEmail';
 import { useAuth } from '../contexts/AuthContext';
+import { TermsPage } from './pages/TermsPage'
+import { PrivacyPage } from './pages/PrivacyPage'
+
 
 export function AppRoutes() {
     const { user } = useAuth();
@@ -74,6 +77,9 @@ export function AppRoutes() {
             <Route path="/subscribe/success" element={<SuccessPage />} />
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="*" element={<Navigate to={isAuth ? "/" : "/login"} replace />} />
+            <Route path="/termos" element={<TermsPage />} />
+            <Route path="/privacidade" element={<PrivacyPage />} />
+
         </Routes>
     );
 }
