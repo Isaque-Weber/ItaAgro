@@ -11,8 +11,8 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { GoogleCallback } from '../pages/GoogleCallback';
 import VerifyEmail from '../pages/VerifyEmail';
 import { useAuth } from '../contexts/AuthContext';
-import { TermsPage } from './pages/TermsPage'
-import { PrivacyPage } from './pages/PrivacyPage'
+import { TermsPage } from '../pages/TermsPage'
+import { PrivacyPage } from '../pages/PrivacyPage'
 
 
 export function AppRoutes() {
