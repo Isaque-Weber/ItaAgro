@@ -50,7 +50,7 @@ export async function agrofitRoutes(app: FastifyInstance) {
     }, async (request, reply) => {
         try {
             const { name, page, limit } = request.query as any;
-            const pests = await agrofitService.getPests(name, page, limit);
+            const pests = await agrofitService.getPests(name, page);
             return reply.send(pests);
         } catch (error) {
             console.error('Erro ao buscar pragas:', error);
@@ -76,7 +76,7 @@ export async function agrofitRoutes(app: FastifyInstance) {
     }, async (request, reply) => {
         try {
             const { name, page, limit } = request.query as any;
-            const cultures = await agrofitService.getCultures(name, page, limit);
+            const cultures = await agrofitService.getCultures(name, page);
             return reply.send(cultures);
         } catch (error) {
             console.error('Erro ao buscar culturas:', error);
@@ -101,7 +101,7 @@ export async function agrofitRoutes(app: FastifyInstance) {
     }, async (request, reply) => {
         try {
             const { page, limit } = request.query as any;
-            const brands = await agrofitService.getBrands(page, limit);
+            const brands = await agrofitService.getBrands(page);
             return reply.send(brands);
         } catch (error) {
             console.error('Erro ao buscar marcas:', error);
@@ -127,7 +127,7 @@ export async function agrofitRoutes(app: FastifyInstance) {
     }, async (request, reply) => {
         try {
             const { name, page, limit } = request.query as any;
-            const activeIngredients = await agrofitService.getActiveIngredients(name, page, limit);
+            const activeIngredients = await agrofitService.getActiveIngredients(name, page);
             return reply.send(activeIngredients);
         } catch (error) {
             console.error('Erro ao buscar ingredientes ativos:', error);

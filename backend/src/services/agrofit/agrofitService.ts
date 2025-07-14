@@ -7,51 +7,42 @@ import { Brand } from '../../entities/Brand'
 import { ActiveIngredient } from '../../entities/ActiveIngredient'
 import dotenv from 'dotenv'
 import nodemailer from 'nodemailer'
-import { SearchResponse } from '../../../@types/agrofit';
+import { ProdutoAgrofit } from '../../../@types/agrofit'
 
 dotenv.config()
 
 /**
- * Interface para os filtros de busca de produtos
+ * Filtros para busca de produtos na API Agrofit.
+ * Use exatamente os parâmetros aceitos pelo endpoint.
  */
 interface ProductFilter {
-    culture?: string;
-    pest?: string;
-    activeIngredient?: string;
-    brand?: string;
-    holder?: string;
-    name?: string;
+    marca_comercial?: string | string[];
+    ingrediente_ativo?: string | string[];
+    titular_registro?: string;
+    cultura?: string | string[];
+    praga?: string | string[];
     page?: number;
-    limit?: number;
 }
-/**
- * Interface para a resposta de busca de produtos
- */
+
 type ProductType = 'formulado' | 'tecnico'
 
-/**
- * Cliente para integração com a API Agrofit
- */
 export class AgrofitService {
     private apiClient: AxiosInstance;
     private baseURL = 'https://api.cnptia.embrapa.br/agrofit/v1';
     private requestsThisMonth = 0;
-    private requestLimit = 100000; // Limite do plano gratuito
-    private alertThreshold: number
-    private mailer
+    private requestLimit = 100000;
+    private alertThreshold: number;
+    private mailer;
 
     constructor() {
-
         this.requestLimit = parseInt(process.env.AGROFIT_REQUEST_LIMIT || '100000', 10)
         this.alertThreshold = Math.floor(this.requestLimit * 0.8)
 
-        // Inicializa o cliente HTTP
         this.apiClient = axios.create({
-            baseURL: process.env.AGROFIT_BASE_URL || 'https://api.cnptia.embrapa.br/agrofit/v1',
+            baseURL: process.env.AGROFIT_BASE_URL || this.baseURL,
             headers: { Authorization: `Bearer ${process.env.AGROFIT_ACCESS_TOKEN}` }
         })
 
-        // Interceptor para contagem de requisições
         this.apiClient.interceptors.request.use(async config => {
             this.requestsThisMonth++;
             if (this.requestsThisMonth === this.alertThreshold) {
@@ -64,7 +55,6 @@ export class AgrofitService {
             return config;
         })
 
-        // Configuração do transportador de email
         this.mailer = nodemailer.createTransport({
             host: process.env.SMTP_HOST,
             port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -90,7 +80,6 @@ export class AgrofitService {
         }
     }
 
-    // Exemplo de obtenção de token via client credentials
     async refreshToken() {
         const url = process.env.TOKEN_URL!;
         const data = new URLSearchParams({
@@ -108,114 +97,100 @@ export class AgrofitService {
     }
 
     /**
-     * Busca produtos na API Agrofit com filtros
+     * Busca produtos por marca comercial (usando o nome correto do parâmetro)
+     */
+    async getProductByBrand(marca_comercial: string) {
+        if (!marca_comercial) throw new Error('Parâmetro "marca_comercial" é obrigatório.');
+        const filtro: ProductFilter = { marca_comercial, page: 1 };
+        let res = await this.getProducts(filtro, 'formulado');
+        if (!res.length) {
+            res = await this.getProducts(filtro, 'tecnico');
+        }
+        return res;
+    }
+
+    /**
+     * Busca produtos, com filtros nos nomes reais dos parâmetros
      */
     async getProducts(
         filters: ProductFilter = {},
         type: ProductType = 'formulado'
-    ) {
-        const endpointBase = type === 'formulado'
+    ): Promise<ProdutoAgrofit[]> {
+        const endpoint = type === 'formulado'
             ? '/produtos-formulados'
             : '/produtos-tecnicos';
+        const searchEndpoint = `/search${endpoint}`;
 
-        const searchBase = `/search${endpointBase}`;
+        // Só adiciona parâmetros que existem
+        const params: Record<string, any> = {};
+        if (filters.page) params.page = filters.page;
+        if (filters.marca_comercial) params.marca_comercial = filters.marca_comercial;
+        if (filters.ingrediente_ativo) params.ingrediente_ativo = filters.ingrediente_ativo;
+        if (filters.titular_registro) params.titular_registro = filters.titular_registro;
+        if (filters.cultura) params.cultura = filters.cultura;
+        if (filters.praga) params.praga = filters.praga;
 
-        const { page = 1, limit = 20, name, culture, pest, brand, holder, activeIngredient } = filters;
-        const params: Record<string, any> = { page, limit };
+        // marca_comercial pode ser obrigatório para formulados
+        if (type === 'formulado' && !filters.marca_comercial) {
+            throw new Error('O filtro "marca_comercial" é obrigatório para buscar produtos formulados');
+        }
 
-        if (name)             params.nome = name;
-        if (culture)          params.cultura = culture;
-        if (pest)             params.praga = pest;
-        if (brand)            params.marca = brand;
-        if (holder)           params.titular = holder;
-        if (activeIngredient) params.ingredienteAtivo = activeIngredient;
+        console.log(`[AGROFIT SERVICE] GET ${searchEndpoint} | Params:`, params);
 
-        // Tenta busca simples primeiro, depois fallback via search
         try {
-            const res = await this.apiClient.get<SearchResponse>(`${endpointBase}`, { params });
+            const res = await this.apiClient.get<ProdutoAgrofit[]>(searchEndpoint, { params });
+            const qtd = res.data.length || 0;
+            console.log(`[AGROFIT SERVICE] Resultados recebidos: ${qtd} para marca_comercial="${filters.marca_comercial}" [Tipo: ${type}]`);
             return res.data;
-        } catch (err) {
-            if ((err as any).response?.status === 404) {
-                const res2 = await this.apiClient.get<SearchResponse>(`${searchBase}`, { params });
-                return res2.data;
-            }
+        } catch (err: any) {
+            console.error(`[AGROFIT SERVICE] ERRO na consulta: ${searchEndpoint}`, err?.message || err);
             throw err;
         }
     }
 
-    /**
-     * Busca pragas na API Agrofit
-     */
-    async getPests(name?: string, page: number = 1, limit: number = 20) {
+    // Os métodos de busca abaixo usam sempre nomes reais dos campos
+    async getPests(nome?: string, page: number = 1): Promise<any[]> {
         try {
             const response = await this.apiClient.get('/pragas', {
-                params: {
-                    nome: name,
-                    page,
-                    limit
-                }
+                params: { nome, page }
             });
-            
-            return response.data;
+            return Array.isArray(response.data) ? response.data : [];
         } catch (error) {
             console.error('Erro ao buscar pragas:', error);
             throw error;
         }
     }
 
-    /**
-     * Busca culturas na API Agrofit
-     */
-    async getCultures(name?: string, page: number = 1, limit: number = 20) {
+    async getCultures(nome?: string, page: number = 1): Promise<any[]> {
         try {
             const response = await this.apiClient.get('/culturas', {
-                params: {
-                    nome: name,
-                    page,
-                    limit
-                }
+                params: { nome, page }
             });
-            
-            return response.data;
+            return Array.isArray(response.data) ? response.data : [];
         } catch (error) {
             console.error('Erro ao buscar culturas:', error);
             throw error;
         }
     }
 
-    /**
-     * Busca marcas na API Agrofit
-     */
-    async getBrands(page: number = 1, limit: number = 20) {
+    async getBrands(page: number = 1): Promise<any[]> {
         try {
             const response = await this.apiClient.get('/marcas-comerciais', {
-                params: {
-                    page,
-                    limit
-                }
+                params: { page }
             });
-            
-            return response.data;
+            return Array.isArray(response.data) ? response.data : [];
         } catch (error) {
             console.error('Erro ao buscar marcas:', error);
             throw error;
         }
     }
 
-    /**
-     * Busca ingredientes ativos na API Agrofit
-     */
-    async getActiveIngredients(name?: string, page: number = 1, limit: number = 20) {
+    async getActiveIngredients(nome?: string, page: number = 1): Promise<any[]> {
         try {
             const response = await this.apiClient.get('/ingredientes-ativos', {
-                params: {
-                    nome: name,
-                    page,
-                    limit
-                }
+                params: { nome, page }
             });
-            
-            return response.data;
+            return Array.isArray(response.data) ? response.data : [];
         } catch (error) {
             console.error('Erro ao buscar ingredientes ativos:', error);
             throw error;
@@ -233,11 +208,11 @@ export class AgrofitService {
     }
 
     /**
-     * Sincroniza dados da API Agrofit com o banco de dados local
+     * Sincroniza dados da API Agrofit com o banco de dados local.
+     * Toda referência a campos e filtros usa agora os nomes reais da API.
      */
     async syncData() {
         try {
-            // Inicializa repositórios
             const productRepo = AppDataSource.getRepository(Product);
             const cultureRepo = AppDataSource.getRepository(Culture);
             const pestRepo = AppDataSource.getRepository(Pest);
@@ -245,10 +220,9 @@ export class AgrofitService {
             const activeIngredientRepo = AppDataSource.getRepository(ActiveIngredient);
 
             // Sincroniza marcas
-            const brands = await this.getBrands(1, 100);
-            for (const brandData of brands.items) {
+            const brands = await this.getBrands(1);
+            for (const brandData of brands) {
                 let brand = await brandRepo.findOne({ where: { name: brandData.nome } });
-                
                 if (!brand) {
                     brand = new Brand();
                     brand.name = brandData.nome;
@@ -259,10 +233,9 @@ export class AgrofitService {
             }
 
             // Sincroniza ingredientes ativos
-            const activeIngredients = await this.getActiveIngredients(undefined, 1, 100);
-            for (const aiData of activeIngredients.items) {
+            const activeIngredients = await this.getActiveIngredients(undefined, 1);
+            for (const aiData of activeIngredients) {
                 let ai = await activeIngredientRepo.findOne({ where: { name: aiData.nome } });
-                
                 if (!ai) {
                     ai = new ActiveIngredient();
                     ai.name = aiData.nome;
@@ -274,10 +247,9 @@ export class AgrofitService {
             }
 
             // Sincroniza culturas
-            const cultures = await this.getCultures(undefined, 1, 100);
-            for (const cultureData of cultures.items) {
+            const cultures = await this.getCultures(undefined, 1);
+            for (const cultureData of cultures) {
                 let culture = await cultureRepo.findOne({ where: { name: cultureData.nome_comum } });
-                
                 if (!culture) {
                     culture = new Culture();
                     culture.name = cultureData.nome_comum;
@@ -289,10 +261,9 @@ export class AgrofitService {
             }
 
             // Sincroniza pragas
-            const pests = await this.getPests(undefined, 1, 100);
-            for (const pestData of pests.items) {
+            const pests = await this.getPests(undefined, 1);
+            for (const pestData of pests) {
                 let pest = await pestRepo.findOne({ where: { commonName: pestData.nome_comum } });
-                
                 if (!pest) {
                     pest = new Pest();
                     pest.commonName = pestData.nome_comum;
@@ -303,87 +274,86 @@ export class AgrofitService {
                 }
             }
 
-            // Sincroniza produtos (limitado a 100 para não exceder limites da API)
-            const products = await this.getProducts({ page: 1, limit: 100 });
-            for (const productData of products.items) {
-                let product = await productRepo.findOne({ 
+            // Sincroniza produtos (busca só produtos formulados e pega a primeira marca comercial)
+            const products = await this.getProducts({ page: 1, marca_comercial: brands[0]?.nome });
+            for (const productData of products) {
+                let product = await productRepo.findOne({
                     where: { registrationNumber: productData.numero_registro },
                     relations: ['cultures', 'pests', 'activeIngredients', 'brand']
                 });
-                
+
                 if (!product) {
                     product = new Product();
                 }
-                
-                // Atualiza dados básicos
-                product.name = productData.nome;
+
+                // Dados básicos
+                product.name = productData.numero_registro; // Se tiver campo nome, ajuste aqui!
                 product.registrationNumber = productData.numero_registro;
-                product.holder = productData.titular;
-                product.toxicologicalClass = productData.classe_toxicologica;
-                product.environmentalClass = productData.classe_ambiental;
-                product.formulationType = productData.tipo_formulacao;
-                product.applicationMode = productData.modo_aplicacao;
-                product.isBiological = productData.biologico || false;
-                product.isOrganic = productData.organico || false;
+                product.holder = productData.titular_registro;
+                product.toxicologicalClass = productData.classificacao_toxicologica;
+                product.environmentalClass = productData.classificacao_ambiental;
+                product.formulationType = productData.formulacao;
+                product.isBiological = productData.produto_biologico || false;
+                product.isOrganic = productData.produto_agricultura_organica || false;
                 product.additionalData = productData;
-                
-                // Associa marca se existir
-                if (productData.marca) {
-                    const brand = await brandRepo.findOne({ where: { name: productData.marca } });
+
+                // Marca comercial (pega a primeira do array)
+                if (Array.isArray(productData.marca_comercial) && productData.marca_comercial.length > 0) {
+                    const brandName = productData.marca_comercial[0];
+                    const brand = await brandRepo.findOne({ where: { name: brandName } });
                     if (brand) {
                         product.brand = brand;
                     }
                 }
-                
-                // Salva o produto para obter o ID
+
                 await productRepo.save(product);
-                
-                // Associa culturas
-                if (productData.culturas && Array.isArray(productData.culturas)) {
-                    product.cultures = [];
-                    for (const cultureName of productData.culturas) {
+
+                // Culturas
+                product.cultures = [];
+                if (Array.isArray(productData.indicacao_uso)) {
+                    for (const ind of productData.indicacao_uso) {
+                        const culture = await cultureRepo.findOne({ where: { name: ind.cultura } });
+                        if (culture) product.cultures.push(culture);
+                    }
+                } else if (Array.isArray(productData.classe_categoria_agronomica)) {
+                    for (const cultureName of productData.classe_categoria_agronomica) {
                         const culture = await cultureRepo.findOne({ where: { name: cultureName } });
-                        if (culture) {
-                            product.cultures.push(culture);
+                        if (culture) product.cultures.push(culture);
+                    }
+                }
+
+                // Pragas
+                product.pests = [];
+                if (Array.isArray(productData.indicacao_uso)) {
+                    for (const ind of productData.indicacao_uso) {
+                        for (const pestName of (ind.praga_nome_comum || [])) {
+                            const pest = await pestRepo.findOne({ where: { commonName: pestName } });
+                            if (pest) product.pests.push(pest);
                         }
                     }
                 }
-                
-                // Associa pragas
-                if (productData.pragas && Array.isArray(productData.pragas)) {
-                    product.pests = [];
-                    for (const pestName of productData.pragas) {
-                        const pest = await pestRepo.findOne({ where: { commonName: pestName } });
-                        if (pest) {
-                            product.pests.push(pest);
-                        }
-                    }
-                }
-                
-                // Associa ingredientes ativos
-                if (productData.ingredientes_ativos && Array.isArray(productData.ingredientes_ativos)) {
-                    product.activeIngredients = [];
-                    for (const aiName of productData.ingredientes_ativos) {
+
+                // Ingredientes ativos
+                product.activeIngredients = [];
+                if (Array.isArray(productData.ingrediente_ativo)) {
+                    for (const aiName of productData.ingrediente_ativo) {
                         const ai = await activeIngredientRepo.findOne({ where: { name: aiName } });
-                        if (ai) {
-                            product.activeIngredients.push(ai);
-                        }
+                        if (ai) product.activeIngredients.push(ai);
                     }
                 }
-                
-                // Salva o produto com todas as relações
+
                 await productRepo.save(product);
             }
-            
+
             return {
                 success: true,
                 message: 'Sincronização concluída com sucesso',
                 stats: {
-                    brands: brands.items.length,
-                    activeIngredients: activeIngredients.items.length,
-                    cultures: cultures.items.length,
-                    pests: pests.items.length,
-                    products: products.items.length
+                    brands: brands.length,
+                    activeIngredients: activeIngredients.length,
+                    cultures: cultures.length,
+                    pests: pests.length,
+                    products: products.length
                 }
             };
         } catch (error) {

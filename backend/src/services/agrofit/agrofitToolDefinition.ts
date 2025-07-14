@@ -11,7 +11,7 @@ export const agrofitTools: AssistantTool[] = [
             properties: {
                 name: {
                     type: 'string',
-                    description: 'Nome do produto, ex: "Odin", "Cartago", etc.'
+                    description: 'Nome do produto, ex: "Odin", "Cartago", Cletodin, etc.'
                 }
             },
             required: ['name']

@@ -96,7 +96,24 @@ export async function processMessageWithAssistant(
     }
 
     if (status !== 'completed') {
-        console.error('❗ Run não finalizado com sucesso:', status)
+        // >>>>>>>>>>>> COMPLEMENTO DE LOG DETALHADO DE FALHA <<<<<<<<<<<<<<<
+        try {
+            // Consulta detalhes do run mais recente
+            const failedRun = await openai.beta.threads.runs.retrieve(threadId, run.id)
+            console.error('❗ Run não finalizado com sucesso:', status)
+            // Loga objeto completo para inspecionar
+            console.error('🪲 [Detalhes do run com falha]:', JSON.stringify(failedRun, null, 2))
+            // Se houver campos de erro específicos, destaca
+            if ((failedRun as any).last_error) {
+                console.error('🛑 last_error:', (failedRun as any).last_error)
+            }
+            if ((failedRun as any).error) {
+                console.error('🛑 error:', (failedRun as any).error)
+            }
+        } catch (fetchErr) {
+            console.error('❌ Falha ao buscar detalhes do run com erro:', fetchErr)
+        }
+        // Lança o erro como antes
         throw new Error(`Run não finalizado com sucesso: ${status}`)
     }
 

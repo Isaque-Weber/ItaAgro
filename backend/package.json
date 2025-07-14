@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "seed": "tsx src/seed.ts",
     "create-plans": "tsx scripts/create-subscription-plans.ts",
+    "update-assistant-tools": "tsx src/scripts/updateAssistantTools.ts",
     "migration:generate:custom": "tsx node_modules/typeorm/cli.js migration:generate --dataSource src/services/typeorm/data-source.ts",
     "migration:generate": "tsx node_modules/typeorm/cli.js migration:generate --dataSource src/services/typeorm/data-source.ts -n InitSchema",
     "migration:run": "tsx node_modules/typeorm/cli.js migration:run      --dataSource src/services/typeorm/data-source.ts",
