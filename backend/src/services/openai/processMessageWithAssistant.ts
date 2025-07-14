@@ -15,7 +15,6 @@ export async function processMessageWithAssistant(
     threadId: string,
     assistantId: string,
     content: string,
-    temperature: number,
 ): Promise<string> {
     await openai.beta.threads.messages.create(threadId, {
         role: 'user',
@@ -25,7 +24,6 @@ export async function processMessageWithAssistant(
 
     const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId,
-        temperature,
         max_completion_tokens: 1000,
     })
     console.log('⚙️ Run iniciado com ID:', run.id)
