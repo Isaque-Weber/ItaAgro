@@ -57,7 +57,7 @@ Podemos atualizar estes Termos periodicamente. Ao continuar utilizando o serviç
 
 ## 11. Foro
 
-Fica eleito o foro da comarca de Saboeiro/CE, com renúncia a qualquer outro, por mais privilegiado que seja, para dirimir dúvidas oriundas deste contrato.
+Fica eleito o foro da **24ª Circunscrição Judiciária – Regional de Avaré/SP**, com renúncia a qualquer outro, por mais privilegiado que seja, para dirimir dúvidas oriundas deste contrato.
 
 ---
 
