@@ -8,10 +8,16 @@ import 'highlight.js/styles/github.css'
 import logoImg from '../assets/logo-removebg-preview.png'
 import { useDarkMode } from '../contexts/DarkModeContext'
 import { ChatStartScreen } from './ChatStartScreen'
+import { Paperclip } from "lucide-react"
 
-type Role = 'user' | 'assistant'
-type Message = { id: string; role: Role; content: string; createdAt: string }
-type Session = { id: string; threadId: string; createdAt: string }
+type Message = {
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    createdAt: string;
+    files?: Array<{ file_id: string; filename: string }>;
+};
+type Session = { id: string, threadId: string, createdAt: string }
 
 import { useAuth } from '../contexts/AuthContext';
 
@@ -21,7 +27,8 @@ export function Chat() {
     const userRole = user?.role;
     const [searchParams] = useSearchParams();
     const initialQuestion = searchParams.get('question')
-
+    const [starting, setStarting] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement | null>(null)
     const [menuOpen, setMenuOpen] = useState(false)
     const [sessions, setSessions] = useState<Session[]>([])
     const [currentSession, setCurrentSession] = useState<Session | null>(null)
@@ -35,7 +42,8 @@ export function Chat() {
     const [initialQuestionSent, setInitialQuestionSent] = useState(false)
     const bottomRef = useRef<HTMLDivElement>(null)
     const sidebarRef = useRef<HTMLDivElement>(null)
-    const { darkMode, toggleDarkMode } = useDarkMode()
+    const { toggleDarkMode } = useDarkMode()
+    const [file, setFile] = useState<File | null>(null)
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -174,6 +182,7 @@ export function Chat() {
             messages.length === 0 &&
             !initialQuestionSent
         ) {
+            setStarting(true)
             setIsTyping(true)
             setInitialQuestionSent(true)
             fetch(
@@ -201,7 +210,10 @@ export function Chat() {
                         }
                     ])
                 })
-                .finally(() => setIsTyping(false))
+                .finally(() => {
+                    setIsTyping(false)
+                    setStarting(false)
+                })
         }
     }, [
         initialQuestion,
@@ -211,19 +223,64 @@ export function Chat() {
     ])
 
     async function sendMessage(e: FormEvent) {
-        e.preventDefault()
-        if (!input.trim() || !currentSession) return
-        setIsSending(true)
-        setIsTyping(true)
-        const tempMsg: Message = {
-            id: `temp-${Date.now()}`,
+        e.preventDefault();
+        if (!input.trim() || !currentSession) return;
+        setIsSending(true);
+        setIsTyping(true);
+
+        // Limpa input logo ao enviar
+        setInput('');
+
+        let file_id: string | undefined = undefined;
+        let file_name: string | undefined = undefined;
+
+        // 1. Se houver arquivo, faça upload primeiro (obtenha id + filename do backend)
+        if (file) {
+            const form = new FormData();
+            form.append('file', file);
+            const uploadRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/chat/upload`, {
+                method: 'POST',
+                credentials: 'include',
+                body: form
+            });
+            if (!uploadRes.ok) {
+                setMessages(prev => [
+                    ...prev,
+                    {
+                        id: `err-${Date.now()}`,
+                        role: 'assistant',
+                        content: 'Falha ao enviar PDF.',
+                        createdAt: new Date().toISOString()
+                    }
+                ]);
+                setIsSending(false);
+                setIsTyping(false);
+                setFile(null)
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = ''  // <-- Reseta o input!
+                }
+                return;
+            }
+            const data = await uploadRes.json();
+            file_id = data.file_id;
+            file_name = data.filename;
+            setFile(null);
+        }
+
+        // Adiciona mensagem do usuário localmente para feedback instantâneo
+        const userMsg: Message = {
+            id: `user-${Date.now()}`,
             role: 'user',
             content: input,
-            createdAt: new Date().toISOString()
-        }
-        setMessages(prev => [...prev, tempMsg])
-        const content = input
-        setInput('')
+            createdAt: new Date().toISOString(),
+            files: file_id && file_name ? [{ file_id, filename: file_name }] : undefined
+        };
+        setMessages(prev => [...prev, userMsg]);
+
+        // 2. Enviar mensagem para o chat (com file_id + filename se houver)
+        const body: any = { content: input };
+        if (file_id && file_name) body.files = [{ file_id, filename: file_name }];
+
         try {
             const res = await fetch(
                 `${import.meta.env.VITE_API_BASE_URL}/chat/sessions/${currentSession.id}/messages`,
@@ -231,18 +288,12 @@ export function Chat() {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content })
+                    body: JSON.stringify(body)
                 }
-            )
-            if (!res.ok) throw new Error('Erro no servidor')
-            const { reply } = await res.json()
-            const botMsg: Message = {
-                id: `bot-${Date.now()}`,
-                role: 'assistant',
-                content: reply,
-                createdAt: new Date().toISOString()
-            }
-            setMessages(prev => [...prev, botMsg])
+            );
+            if (!res.ok) throw new Error('Erro no servidor');
+            // Após resposta, recarrega todas as mensagens da sessão (garante consistência)
+            await loadMessages(currentSession.id);
         } catch {
             setMessages(prev => [
                 ...prev,
@@ -252,10 +303,11 @@ export function Chat() {
                     content: 'Erro de comunicação com o servidor.',
                     createdAt: new Date().toISOString()
                 }
-            ])
+            ]);
         } finally {
-            setIsTyping(false)
-            setIsSending(false)
+            setIsTyping(false);
+            setIsSending(false);
+            setInput('');
         }
     }
 
@@ -378,7 +430,13 @@ export function Chat() {
                     </button>
                 </header>
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth pb-28 md:pb-6">
-                    {loadingMsgs ? (
+                    { starting ? (
+                        <div className="flex-1 flex items-center justify-center">
+                            <div className="animate-pulse text-gray-500 dark:text-gray-400">
+                                Iniciando conversa…
+                            </div>
+                        </div>
+                    ) : loadingMsgs ? (
                         <div className="space-y-4 animate-pulse">
                             {[...Array(3)].map((_, i) => (
                                 <div
@@ -395,12 +453,29 @@ export function Chat() {
                                 <div
                                     key={m.id}
                                     className={`max-w-[90%] md:max-w-2xl px-4 py-3 rounded-lg shadow-sm whitespace-pre-wrap
-                    ${m.role === 'user' ? 'self-end ml-auto' : 'self-start mr-auto'}
-                    bg-white dark:bg-[#444654]`}
-                                >
+                                        ${m.role === 'user' ? 'self-end ml-auto' : 'self-start mr-auto'}
+                                        bg-white dark:bg-[#444654]`}
+                                    >
                                     <p className="text-xs font-bold mb-1">
                                         {m.role === 'user' ? 'Você' : 'ItaAgro'}
                                     </p>
+                                    {/* Mostra anexo PDF se houver */}
+                                    {m.files && m.files.length > 0 && m.files.map((file, i) =>
+                                            file.filename?.toLowerCase().endsWith('.pdf') && (
+                                                <div key={file.file_id || i} className="flex items-center gap-2 p-3 mb-2 rounded-lg bg-pink-50 dark:bg-pink-950 border border-pink-200 dark:border-pink-900 w-fit">
+                                                  <span className="inline-flex items-center justify-center bg-pink-200 dark:bg-pink-800 rounded-full w-8 h-8 mr-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-pink-700 dark:text-pink-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7V3h10v4M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                  </span>
+                                                    <div>
+                                                        <span className="font-semibold text-pink-700 dark:text-pink-200">{file.filename}</span>
+                                                        <div className="text-xs text-pink-600 dark:text-pink-300">PDF</div>
+                                                    </div>
+                                                </div>
+                                            )
+                                    )}
+
                                     <div className="prose prose-sm max-w-none text-sm leading-relaxed dark:prose-invert">
                                         <ReactMarkdown
                                             remarkPlugins={[remarkGfm]}
@@ -420,10 +495,43 @@ export function Chat() {
                         </>
                     )}
                 </div>
-                <form
-                    onSubmit={sendMessage}
-                    className="p-4 border-t flex gap-2 fixed bottom-0 left-0 w-full md:static md:border-none bg-white border-gray-200 dark:bg-[#40414f] dark:border-[#565869]"
-                >
+                <form onSubmit={sendMessage} className="p-4 border-t flex gap-2 fixed bottom-0 left-0 w-full md:static md:border-none bg-white border-gray-200 dark:bg-[#40414f] dark:border-[#565869]">
+                    <div className="relative flex items-center">
+                        <input
+                            type="file"
+                            accept="application/pdf"
+                            ref={fileInputRef}
+                            onChange={e => setFile(e.target.files?.[0] || null)}
+                            className="hidden"
+                            id="file-upload"
+                        />
+                        <label
+                            htmlFor="file-upload"
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 shadow-sm cursor-pointer hover:bg-gray-200 hover:dark:bg-neutral-700 transition text-sm font-medium text-gray-700 dark:text-gray-200"
+                            tabIndex={0}
+                            title="Anexar PDF"
+                        >
+                            {/* Ícone: pode usar <Paperclip size={18} /> se usar lucide-react */}
+                            <span className="text-green-700">
+                              <Paperclip size={18} className="inline" />
+                                {/* ou: <span className="inline text-lg">📎</span> */}
+                            </span>
+                            <span>Anexar PDF</span>
+                        </label>
+                        {file && (
+                            <div className="flex items-center ml-2 bg-green-50 dark:bg-green-950 px-3 py-1 rounded shadow text-green-800 dark:text-green-200 text-xs">
+                                <span className="truncate max-w-[120px]">{file.name}</span>
+                                <button
+                                    type="button"
+                                    className="ml-2 text-red-500 hover:text-red-700"
+                                    onClick={() => setFile(null)}
+                                    aria-label="Remover arquivo"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <input
                         type="text"
                         value={input}

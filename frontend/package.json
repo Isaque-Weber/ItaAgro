@@ -12,6 +12,7 @@
     "dependencies": {
         "@tailwindcss/typography": "^0.5.16",
         "highlight.js": "^11.11.1",
+        "lucide-react": "^0.525.0",
         "react": "^18.0.0",
         "react-dom": "^18.0.0",
         "react-hook-form": "^7.56.1",
