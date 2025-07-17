@@ -41,8 +41,8 @@ O Ita Agro oferece um conjunto robusto de funcionalidades para otimizar sua cons
 
 O projeto é construído com uma arquitetura que inclui:
 
-*   **Backend:** Desenvolvido utilizando [Mencione a linguagem/framework, ex: Node.js] com [Mencione o ORM, ex: TypeORM] para interação com o banco de dados e integração com APIs externas (OpenAI, Agrofit, Clima, Webhooks de Pagamento).
-*   **Frontend:** Desenvolvido com [Mencione o framework/biblioteca, ex: React] focado em uma experiência de usuário **mobile-first**.
+*   **Backend:** Desenvolvido utilizando Node.js com TypeORM para interação com o banco de dados e integração com APIs externas (OpenAI, Agrofit, Clima, Webhooks de Pagamento).
+*   **Frontend:** Desenvolvido com React focado em uma experiência de usuário **mobile-first**.
 
 ## Como Começar (Opcional - se for um README para contribuidores)
 
