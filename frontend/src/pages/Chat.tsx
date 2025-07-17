@@ -509,7 +509,16 @@ export function Chat() {
                             type="file"
                             accept="application/pdf"
                             ref={fileInputRef}
-                            onChange={e => setFile(e.target.files?.[0] || null)}
+                            onChange={e => {
+                                const selectedFile = e.target.files?.[0] || null;
+                                if (selectedFile && selectedFile.size > 2 * 1024 * 1024) { // 2MB
+                                    alert('O arquivo PDF excede o tamanho máximo de 2MB.');
+                                    e.target.value = ''; // Limpa o input
+                                    setFile(null);
+                                } else {
+                                    setFile(selectedFile);
+                                }
+                            }}
                             className="hidden"
                             id="file-upload"
                         />
