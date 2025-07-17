@@ -32,7 +32,7 @@ export function Login() {
                 return;
             }
 
-            onLogin();
+            await onLogin();
             navigate('/');
 
         } catch (err) {

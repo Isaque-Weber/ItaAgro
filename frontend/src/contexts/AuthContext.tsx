@@ -1,5 +1,5 @@
-// src/contexts/AuthContext.tsx
 import React, {createContext, useState, useEffect, useContext, useMemo} from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface User {
     sub: string;
@@ -31,49 +31,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com'];
+    const location = useLocation();
 
     const isSeedUser = useMemo(() => {
         return user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com';
     }, [user?.email]);
 
-    const loadUser = () => {
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
-            method: 'GET',
-            credentials: 'include',
-        })
-            .then(async (res) => { // Tornando a função async
-                if (!res.ok) {
-                    // Se a resposta não for OK, verifica se é 401
-                    if (res.status === 401) {
-                        // Limpa o estado e redireciona para o login
-                        setUser(null);
-                        window.location.href = '/login'; 
+    const loadUser = (): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
+                method: 'GET',
+                credentials: 'include',
+            })
+                .then(async (res) => {
+                    if (!res.ok) {
+                        if (res.status === 401) {
+                            setUser(null);
+                            window.location.href = '/login';
+                        }
+                        reject(new Error('Não autenticado'));
+                        return;
                     }
-                    throw new Error('Não autenticado');
-                }
-                return res.json();
-            })
-            .then((data: User) => {
-                if (SEED_USERS.includes(data.email)) {
-                    setUser({ ...data, emailVerified: true });
-                } else {
-                    setUser(data);
-                }
-            })
-            .catch(() => {
-                // O catch agora lida com outros erros de fetch, etc.
-                setUser(null);
-            })
-            .finally(() => setLoading(false));
+                    return res.json();
+                })
+                .then((data: User) => {
+                    if (SEED_USERS.includes(data.email)) {
+                        setUser({ ...data, emailVerified: true });
+                    } else {
+                        setUser(data);
+                    }
+                    resolve();
+                })
+                .catch((err) => {
+                    setUser(null);
+                    reject(err);
+                })
+                .finally(() => setLoading(false));
+        });
     };
 
     useEffect(() => {
-        loadUser();
-    }, []);
+        const isLoginPage = location.pathname === '/login';
+        const isRecoverPage = location.pathname === '/recover';
+        const isSignupPage = location.pathname === '/signup';
 
-    const onLogin = () => {
+        if (isLoginPage || isRecoverPage || isSignupPage) {
+            setLoading(false);
+        } else {
+            loadUser().catch(() => {
+                // O erro já é tratado em loadUser, que redireciona para /login
+            });
+        }
+    }, [location.pathname]);
+
+    const onLogin = async (): Promise<void> => {
         setLoading(true);
-        loadUser();
+        try {
+            await loadUser();
+        } catch (error) {
+            // O erro já é tratado em loadUser, mas podemos logar se quisermos
+            console.error("Falha no processo de login", error);
+            throw error; // Re-lança para que a página de login possa saber que falhou
+        }
     };
 
     const onLogout = async () => {

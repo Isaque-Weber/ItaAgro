@@ -1,24 +1,24 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { Login } from '../pages/Login';
-import { RecoverPassword } from '../pages/RecoverPassword';
-import { Signup } from '../pages/Signup';
-import { Chat } from '../pages/Chat';
-import { AdminDashboard } from '../pages/AdminDashboard';
-import DashboardUsers from "../pages/DashboardUsers";
-import { SubscribePage } from '../pages/SubscribePage';
-import { SuccessPage } from '../pages/SuccessPage';
-import { ProtectedRoute } from "../components/ProtectedRoute";
-import { GoogleCallback } from '../pages/GoogleCallback';
-import VerifyEmail from '../pages/VerifyEmail';
-import { useAuth } from '../contexts/AuthContext';
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { Login } from '../pages/Login'
+import { RecoverPassword } from '../pages/RecoverPassword'
+import { Signup } from '../pages/Signup'
+import { Chat } from '../pages/Chat'
+import { AdminDashboard } from '../pages/AdminDashboard'
+import DashboardUsers from "../pages/DashboardUsers"
+import { SubscribePage } from '../pages/SubscribePage'
+import { SuccessPage } from '../pages/SuccessPage'
+import { ProtectedRoute } from "../components/ProtectedRoute"
+import { GoogleCallback } from '../pages/GoogleCallback'
+import VerifyEmail from '../pages/VerifyEmail'
+import { useAuth } from '../contexts/AuthContext'
 import { TermsPage } from '../pages/TermsPage'
 import { PrivacyPage } from '../pages/PrivacyPage'
 
 
 export function AppRoutes() {
-    const { user } = useAuth();
-    const isAuth = !!user;
-    const userRole = user?.role;
+    const { user } = useAuth()
+    const isAuth = !!user
+    // const userRole = user?.role
 
     return (
         <Routes>
@@ -81,5 +81,5 @@ export function AppRoutes() {
             <Route path="/privacidade" element={<PrivacyPage />} />
 
         </Routes>
-    );
+    )
 }
