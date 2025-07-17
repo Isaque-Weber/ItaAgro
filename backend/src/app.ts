@@ -32,7 +32,11 @@ export async function build(): Promise<FastifyInstance> {
   await app.register(authPlugin);
 
   // 3) Multipart para uploads
-  app.register(fastifyMultipart);
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: 2 * 1024 * 1024  // 2 MB
+    }
+  });
 
   // 4) Rotas de auth e admin
   await app.register(authRoutes, { prefix: '/auth' });

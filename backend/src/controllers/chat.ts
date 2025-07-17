@@ -136,7 +136,7 @@ export async function chatRoutes(app: FastifyInstance) {
         })
     })
 
-    app.post('/upload', { preHandler: [app.authenticate], limits: { fileSize: 2 * 1024 * 1024 } }, async (req, res) => {
+    app.post('/upload', { preHandler: [app.authenticate] }, async (req, res) => {
         const data = await req.file();
         if (!data) return res.status(400).send({ error: 'Nenhum arquivo enviado.' });
 
