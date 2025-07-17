@@ -41,8 +41,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             method: 'GET',
             credentials: 'include',
         })
-            .then((res) => {
-                if (!res.ok) throw new Error('Não autenticado');
+            .then(async (res) => { // Tornando a função async
+                if (!res.ok) {
+                    // Se a resposta não for OK, verifica se é 401
+                    if (res.status === 401) {
+                        // Limpa o estado e redireciona para o login
+                        setUser(null);
+                        window.location.href = '/login'; 
+                    }
+                    throw new Error('Não autenticado');
+                }
                 return res.json();
             })
             .then((data: User) => {
@@ -53,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             })
             .catch(() => {
+                // O catch agora lida com outros erros de fetch, etc.
                 setUser(null);
             })
             .finally(() => setLoading(false));
