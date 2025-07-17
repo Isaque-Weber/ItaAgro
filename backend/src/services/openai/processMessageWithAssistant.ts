@@ -2,15 +2,13 @@ import { openai } from './openai'
 import { WeatherTool } from '../weather/weatherTool'
 import { AgrofitTool } from '../agrofit/agrofitTool'
 
-const agrofitTool = new AgrofitTool()
-
-// Limita o tamanho das saídas das ferramentas para evitar erros >1MB
 function safeOutput(str: string): string {
     if (!str) return ''
     const MAX = 200_000
     return str.length > MAX ? str.slice(0, MAX) : str
 }
 
+// Agora recebe o array de arquivos!
 export async function processMessageWithAssistant(
     threadId: string,
     assistantId: string,
@@ -18,26 +16,39 @@ export async function processMessageWithAssistant(
 ): Promise<string> {
     await openai.beta.threads.messages.create(threadId, {
         role: 'user',
-        content,
+        content
     })
-    console.log('📨 Mensagem registrada na thread:', threadId)
+    console.log('🛠️  Prompt para o assistant:', {
+        threadId,
+        assistantId,
+        content
+    })
 
     const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId,
-        max_completion_tokens: 1000,
+        // max_completion_tokens: 1000,
     })
     console.log('⚙️ Run iniciado com ID:', run.id)
 
     let status = run.status
     let runResult = run
+    const waiting = ['in_progress', 'requires_action', 'queued']
+    let attempts = 0
 
     const weatherTool = new WeatherTool()
+    const agrofitTool = new AgrofitTool()
 
-    while (status !== 'completed' && status !== 'failed' && status !== 'cancelled') {
+    while (waiting.includes(status) && attempts < 40) {
         await new Promise((resolve) => setTimeout(resolve, 1000))
         runResult = await openai.beta.threads.runs.retrieve(threadId, run.id)
         status = runResult.status
         console.log('🔄 Status do run:', status)
+
+        if (status === 'incomplete') {
+            console.warn('⚠️ Run retornou status “incomplete”, saindo do loop.')
+            break
+        }
+        attempts++
 
         if (status === 'requires_action' && runResult.required_action?.type === 'submit_tool_outputs') {
             const toolCalls = runResult.required_action.submit_tool_outputs.tool_calls
@@ -67,7 +78,6 @@ export async function processMessageWithAssistant(
                     functionResponse = { error: `Erro ao processar ferramenta: ${error}` }
                 }
 
-                // Usa safeOutput para não ultrapassar 1MB
                 toolOutputs.push({
                     tool_call_id: toolCall.id,
                     output: safeOutput(JSON.stringify(functionResponse))
@@ -94,14 +104,10 @@ export async function processMessageWithAssistant(
     }
 
     if (status !== 'completed') {
-        // >>>>>>>>>>>> COMPLEMENTO DE LOG DETALHADO DE FALHA <<<<<<<<<<<<<<<
         try {
-            // Consulta detalhes do run mais recente
             const failedRun = await openai.beta.threads.runs.retrieve(threadId, run.id)
             console.error('❗ Run não finalizado com sucesso:', status)
-            // Loga objeto completo para inspecionar
             console.error('🪲 [Detalhes do run com falha]:', JSON.stringify(failedRun, null, 2))
-            // Se houver campos de erro específicos, destaca
             if ((failedRun as any).last_error) {
                 console.error('🛑 last_error:', (failedRun as any).last_error)
             }
@@ -111,7 +117,6 @@ export async function processMessageWithAssistant(
         } catch (fetchErr) {
             console.error('❌ Falha ao buscar detalhes do run com erro:', fetchErr)
         }
-        // Lança o erro como antes
         throw new Error(`Run não finalizado com sucesso: ${status}`)
     }
 

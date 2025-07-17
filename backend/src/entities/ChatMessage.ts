@@ -27,6 +27,9 @@ export class ChatMessage {
     @Column('text')
     content!: string
 
+    @Column({ type: "jsonb", nullable: true })
+    files?: { file_id: string, filename: string }[]
+
     @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
     createdAt!: Date
 }

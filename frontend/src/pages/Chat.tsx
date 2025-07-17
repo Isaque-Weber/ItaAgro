@@ -1,6 +1,6 @@
 // frontend/src/pages/Chat.tsx
 import React, { useRef, useState, useEffect, FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation  } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -23,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function Chat() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, onLogout } = useAuth();
     const userRole = user?.role;
     const [searchParams] = useSearchParams();
@@ -213,13 +214,20 @@ export function Chat() {
                 .finally(() => {
                     setIsTyping(false)
                     setStarting(false)
+                    setInitialQuestionSent(false)
+                    navigate(
+                        { pathname: location.pathname },
+                        { replace: true }
+                    )
                 })
         }
     }, [
         initialQuestion,
         currentSession,
         messages.length,
-        initialQuestionSent
+        initialQuestionSent,
+        navigate,
+        location.pathname
     ])
 
     async function sendMessage(e: FormEvent) {
@@ -516,7 +524,6 @@ export function Chat() {
                               <Paperclip size={18} className="inline" />
                                 {/* ou: <span className="inline text-lg">📎</span> */}
                             </span>
-                            <span>Anexar PDF</span>
                         </label>
                         {file && (
                             <div className="flex items-center ml-2 bg-green-50 dark:bg-green-950 px-3 py-1 rounded shadow text-green-800 dark:text-green-200 text-xs">

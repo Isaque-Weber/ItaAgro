@@ -5,6 +5,7 @@ import { User } from '../../entities/User'
 import { Subscription } from '../../entities/Subscription'
 import { ChatSession } from '../../entities/ChatSession'
 import { ChatMessage } from '../../entities/ChatMessage'
+import { Document } from '../../entities/Document'
 
 export const AppDataSource = new DataSource({
     type:     'postgres',
@@ -18,6 +19,7 @@ export const AppDataSource = new DataSource({
         Subscription,
         ChatSession,
         ChatMessage,
+        Document
     ],
     migrations: [ process.env.NODE_ENV === 'production' ? 'dist/src/services/typeorm/migrations/*.js' : 'src/services/typeorm/migrations/*.ts' ],
 })
