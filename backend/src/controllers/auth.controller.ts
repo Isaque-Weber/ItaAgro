@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { AppDataSource } from '../services/typeorm/data-source'
 import { User } from '../entities/User'
+import { Subscription, SubscriptionStatus } from '../entities/Subscription'
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { z } from 'zod'
@@ -76,7 +77,10 @@ export async function authRoutes(app: FastifyInstance) {
     app.post('/login', async (req, reply) => {
         try {
             const { email, password } = loginBodySchema.parse(req.body)
-            const user = await repo.findOneBy({ email })
+            const user = await repo.findOne({
+                where: { email },
+                relations: ['subscriptions'],
+            })
 
             if (!user || !user.password) {
                 return reply.code(401).send({ message: 'Usuário ou senha inválidos' })
@@ -85,12 +89,21 @@ export async function authRoutes(app: FastifyInstance) {
             const match = await bcrypt.compare(password, user.password)
             if (!match) return reply.code(401).send({ message: 'Credenciais inválidas' })
 
-            const isSeed = ['user@itaagro.com', 'admin@itaagro.com'].includes(user.email)
+            const isSeed = SEED_USERS.includes(user.email)
             if (!user.emailVerified && !isSeed) {
                 return reply.code(403).send({
                     message: 'Verifique seu e-mail antes de fazer login.',
                     reason: 'email_not_verified'
                 })
+            }
+
+            // --- Atualiza o status subscriptionActive baseado nas assinaturas ---
+            const hasActive = user.subscriptions.some(
+                s => s.status === SubscriptionStatus.ACTIVE || s.status === SubscriptionStatus.AUTHORIZED
+            )
+            if (user.subscriptionActive !== hasActive) {
+                user.subscriptionActive = hasActive
+                await repo.save(user)
             }
 
             const token = app.jwt.sign(
@@ -115,6 +128,7 @@ export async function authRoutes(app: FastifyInstance) {
             return reply.code(500).send({ message: 'Erro interno no servidor.' })
         }
     })
+
 
     app.post('/recover', async (req, reply) => {
         try {
@@ -157,7 +171,18 @@ export async function authRoutes(app: FastifyInstance) {
             user.emailVerified = true
             user.verificationCode = undefined
             user.verificationCodeExpiresAt = undefined
-            await repo.save(user)
+
+            // --- Atualiza o campo subscriptionActive de acordo com assinaturas ativas ---
+            const subscriptions = await repo.manager.getRepository(Subscription).find({ where: { user: { id: user.id } } })
+            const hasActive = subscriptions.some(
+                s => s.status === SubscriptionStatus.ACTIVE || s.status === SubscriptionStatus.AUTHORIZED
+            )
+            if (user.subscriptionActive !== hasActive) {
+                user.subscriptionActive = hasActive
+                await repo.save(user)
+            } else {
+                await repo.save(user)
+            }
 
             const token = app.jwt.sign(
                 {

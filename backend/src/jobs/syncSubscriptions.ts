@@ -10,7 +10,7 @@ export async function syncSubscriptionsJob() {
 
     console.log('[SYNC] Iniciando sincronização...')
 
-    // Tente buscar todas as assinaturas (adapte conforme seu método)
+    // 1. Busca todas as assinaturas do MercadoPago
     let mpSubscriptions: any[] = []
     try {
         mpSubscriptions = await mpClient.listSubscriptions()
@@ -20,10 +20,8 @@ export async function syncSubscriptionsJob() {
         return
     }
 
+    // 2. Atualiza todas as subscriptions locais pelo externalId
     for (const mpSub of mpSubscriptions) {
-        // console.log('\n[SYNC] ===== Novo registro MercadoPago =====')
-        // console.log('[SYNC] Dados brutos da assinatura:', JSON.stringify(mpSub, null, 2))
-
         const localSub = await subscriptionRepo.findOne({ where: { externalId: mpSub.id }, relations: ['user'] })
         if (!localSub) {
             console.log(`[SYNC] Não existe subscription local para externalId: ${mpSub.id}`)
@@ -35,14 +33,25 @@ export async function syncSubscriptionsJob() {
             console.log(`[SYNC] Status diferente! Local: ${localSub.status}, MercadoPago: ${mpSub.status} (transformado: ${newStatus})`)
             localSub.status = newStatus
             await subscriptionRepo.save(localSub)
-
-            const isActive = newStatus === SubscriptionStatus.ACTIVE || newStatus === SubscriptionStatus.AUTHORIZED
-            await userRepo.update(localSub.user.id, { subscriptionActive: isActive })
-            console.log(`[SYNC] Usuário ${localSub.user.email || localSub.user.id} agora está com subscriptionActive = ${isActive}`)
         } else {
             console.log(`[SYNC] Status igual, nada a fazer. (${localSub.status})`)
         }
     }
 
+    // 3. Atualiza o campo subscriptionActive de TODOS os usuários
+    const allUsers = await userRepo.find({ relations: ['subscriptions'] })
+    for (const user of allUsers) {
+        // checa se tem pelo menos uma assinatura ativa/autorizada
+        const hasActive = user.subscriptions.some(
+            s => s.status === SubscriptionStatus.ACTIVE || s.status === SubscriptionStatus.AUTHORIZED
+        )
+        if (user.subscriptionActive !== hasActive) {
+            user.subscriptionActive = hasActive
+            await userRepo.save(user)
+            console.log(`[SYNC] Usuário ${user.email || user.id} atualizado: subscriptionActive = ${hasActive}`)
+        }
+    }
+
     console.log('[SYNC] Fim do job de sincronização.')
 }
+
