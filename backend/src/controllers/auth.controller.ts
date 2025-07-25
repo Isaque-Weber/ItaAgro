@@ -192,16 +192,23 @@ export async function authRoutes(app: FastifyInstance) {
             await req.jwtVerify()
             // @ts-ignore
             const userId = String(req.user.sub)
-            const user = await repo.findOneBy({ id: userId })
+            const user = await repo.findOne({
+                where: { id: userId },
+                relations: ['subscriptions'],
+            })
             if (!user) return reply.code(401).send({ message: 'Não autenticado' })
 
             const isSeed = SEED_USERS.includes(user.email)
+            const plan = user.subscriptions?.find(s => s.status === 'active')?.plan || null
 
             return reply.send({
                 sub: user.id,
+                name: user.name,
                 email: user.email,
                 role: user.role,
-                emailVerified: isSeed ? true : user.emailVerified
+                emailVerified: isSeed ? true : user.emailVerified,
+                subscriptionActive: user.subscriptionActive, // <--- Alteração aqui
+                plan,
             })
         } catch (err) {
             return reply.code(401).send({ message: 'Não autenticado' })

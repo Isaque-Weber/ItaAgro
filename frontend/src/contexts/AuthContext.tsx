@@ -6,6 +6,8 @@ interface User {
     email: string;
     role: 'user' | 'admin';
     emailVerified: boolean;
+    subscriptionActive?: boolean;
+    plan?: string | null;
 }
 
 interface AuthContextType {
@@ -14,6 +16,7 @@ interface AuthContextType {
     onLogin: () => void;
     onLogout: () => void;
     isSeedUser: boolean;
+    refreshUser: () => Promise<void>;
     setUserRole: (role: 'user' | 'admin') => void;
 }
 
@@ -24,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
     onLogin: () => {},
     onLogout: () => {},
     setUserRole: () => {},
+    refreshUser: () => { return Promise.resolve() },
 });
 
 
@@ -113,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, onLogin, onLogout, isSeedUser, setUserRole }}>
+        <AuthContext.Provider value={{ user, loading, onLogin, onLogout, isSeedUser, setUserRole, refreshUser: loadUser }}>
             {children}
         </AuthContext.Provider>
     );

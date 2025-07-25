@@ -1,40 +1,29 @@
-// src/hooks/useSubscription.tsx
-import { useEffect, useState } from 'react'
-import { useUser } from '../contexts/AuthContext'
-
-interface SubscriptionStatus {
-    subscribed: boolean
-}
+import { useEffect, useState } from 'react';
+import { useUser } from '../contexts/AuthContext';
 
 export function useSubscription() {
-    const [checking, setChecking]     = useState(true)
-    const [subscribed, setSubscribed] = useState(false)
-    const { user } = useUser()
-    const isSeedUser = user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com'
+    const { user, loading } = useUser();
+    const [checking, setChecking] = useState(true);
+    const [subscribed, setSubscribed] = useState(false);
 
     useEffect(() => {
-        if (!user || !user.emailVerified) return;
+        if (loading) {
+            setChecking(true);
+            return;
+        }
 
-        if (isSeedUser) {
-            setSubscribed(true);
+        if (!user) {
+            setSubscribed(false);
             setChecking(false);
             return;
         }
 
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/subscription/status`, {
-            credentials: 'include'
-        })
-            .then(res => res.json())
-            .then((data: SubscriptionStatus) => {
-                setSubscribed(data.subscribed)
-            })
-            .catch(() => {
-                setSubscribed(false)
-            })
-            .finally(() => {
-                setChecking(false)
-            })
-    }, [isSeedUser])
+        // A informação já vem no objeto `user` do AuthContext
+        const isSubscribed = user.subscriptionActive || user.role === 'admin';
+        setSubscribed(isSubscribed);
+        setChecking(false);
 
-    return { checking, subscribed }
+    }, [user, loading]);
+
+    return { checking, subscribed };
 }

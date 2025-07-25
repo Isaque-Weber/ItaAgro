@@ -1,6 +1,7 @@
 // src/pages/SuccessPage.tsx
 import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import {useAuth} from "../contexts/AuthContext";
 
 interface SubscriptionInfo {
     id: string
@@ -16,6 +17,7 @@ export function SuccessPage() {
     const [loading, setLoading]     = useState(false)
     const [error, setError]         = useState<string|null>(null)
     const [info, setInfo]           = useState<SubscriptionInfo|null>(null)
+    const { refreshUser } = useAuth()
 
     const subscriptionId = searchParams.get('preapproval_id')
         || searchParams.get('subscriptionId')
@@ -35,9 +37,10 @@ export function SuccessPage() {
             }
         )
             .then(res => res.json())
-            .then((data: any) => {
+            .then(async (data: any) => {
                 if (!data || ('error' in data)) throw new Error((data && data.error) || 'Erro inesperado')
                 setInfo(data as SubscriptionInfo)
+                await refreshUser?.()
             })
             .catch(err => {
                 setError('Não foi possível confirmar sua assinatura. ' + (err?.message ?? ''))

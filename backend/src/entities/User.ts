@@ -47,6 +47,9 @@ export class User {
     @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
     createdAt!: Date
 
+    @Column({ type: 'boolean', default: false })
+    subscriptionActive!: boolean;
+
     @OneToMany(() => Subscription, s => s.user)
     subscriptions!: Subscription[]
 

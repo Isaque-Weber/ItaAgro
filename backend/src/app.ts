@@ -11,6 +11,8 @@ import { paymentWebhookRoutes } from './controllers/paymentWebhookController';
 import { subscriptionRoutes } from './controllers/subscription';
 import { googleAuthPlugin } from './plugins/google-auth.plugin';
 import fastifyMultipart from '@fastify/multipart';
+import cron from 'node-cron';
+import { syncSubscriptionsJob } from './jobs/syncSubscriptions';
 
 // Aqui apenas registramos plugins e rotas, sem inicializar o DataSource nem iniciar jobs
 export async function build(): Promise<FastifyInstance> {
@@ -68,6 +70,20 @@ export async function build(): Promise<FastifyInstance> {
   await app.register(paymentWebhookRoutes, { prefix: '/payments' });
   await app.register(subscriptionRoutes, { prefix: '/api' });
   await app.register(googleAuthPlugin);
+
+  // Sincroniza assinaturas todos os dias às 5h da manhã (horário do servidor)
+  cron.schedule('0 5 * * *', async () => {
+    app.log.info('Iniciando job de sincronizacao de assinaturas MercadoPago...');
+    try {
+      await syncSubscriptionsJob();
+      app.log.info('Job de sincronização concluído.');
+    } catch (err) {
+      app.log.error('Erro no job de sincronização:', err);
+    }
+  });
+  syncSubscriptionsJob()
+      .then(() => app.log.info('Job de sincronizacao executado ao iniciar o backend!'))
+      .catch(err => app.log.error('Erro ao rodar sync no startup', err));
 
   return app;
 }
