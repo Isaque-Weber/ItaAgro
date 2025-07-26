@@ -45,13 +45,27 @@ export async function chatRoutes(app: FastifyInstance) {
     })
 
     app.get('/sessions', { preHandler: [app.authenticate] }, async (req, reply) => {
+        // Busca as sessões do usuário
         const sessions = await sessionRepo.find({
             where: { user: { id: (req.user as any).sub } },
             order: { createdAt: 'DESC' }
-        })
-        reply.send(sessions)
+        });
 
-    })
+        // Busca as primeiras mensagens do usuário para cada sessão
+        const messageRepo = AppDataSource.getRepository(ChatMessage);
+        const sessionsWithTitles = await Promise.all(sessions.map(async (sess) => {
+            const firstUserMsg = await messageRepo.findOne({
+                where: { session: { id: sess.id }, role: 'user' },
+                order: { createdAt: 'ASC' }
+            });
+            return {
+                ...sess,
+                title: firstUserMsg?.content?.substring(0, 40) || 'Nova conversa'
+            };
+        }));
+
+        reply.send(sessionsWithTitles);
+    });
 
     // Retorna mensagens de uma sessão
     app.get('/sessions/:id/messages', { preHandler: [app.authenticate] }, async (req, res) => {

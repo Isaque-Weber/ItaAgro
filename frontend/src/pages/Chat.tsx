@@ -17,7 +17,9 @@ type Message = {
     createdAt: string;
     files?: Array<{ file_id: string; filename: string }>;
 };
-type Session = { id: string, threadId: string, createdAt: string }
+type Session = {
+    title: string;
+    id: string, threadId: string, createdAt: string }
 
 import { useAuth } from '../contexts/AuthContext';
 
@@ -46,6 +48,7 @@ export function Chat() {
     const { toggleDarkMode } = useDarkMode()
     const [file, setFile] = useState<File | null>(null)
     const sessionIdFromUrl = searchParams.get('session')
+    const [sessionTitles, setSessionTitles] = useState<{ [id: string]: string }>({});
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -332,7 +335,7 @@ export function Chat() {
         await onLogout();
         navigate('/login');
     }
-
+    
     return (
         <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-neutral-100 dark:bg-[#343541] text-gray-800 dark:text-[#d1d5db]">
             {!menuOpen && (
@@ -406,7 +409,7 @@ export function Chat() {
                                     : 'hover:bg-gray-100 border-transparent dark:hover:bg-[#3e3f4b]'}`}
                             >
                 <span className="block truncate w-full pr-5">
-                  {new Date(s.createdAt).toLocaleString()}
+                  {s.title || new Date(s.createdAt).toLocaleString()}
                 </span>
                                 <button
                                     onClick={e => {
