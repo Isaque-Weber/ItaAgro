@@ -45,10 +45,19 @@ export function Chat() {
     const sidebarRef = useRef<HTMLDivElement>(null)
     const { toggleDarkMode } = useDarkMode()
     const [file, setFile] = useState<File | null>(null)
+    const sessionIdFromUrl = searchParams.get('session')
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
+
+    // Ajuste para priorizar sessionId da URL ao montar/com session mudar
+    useEffect(() => {
+        if (sessionIdFromUrl) {
+            // Se vier da URL, set a sessão direto
+            setCurrentSession({ id: sessionIdFromUrl } as Session);
+        }
+    }, [sessionIdFromUrl])
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {

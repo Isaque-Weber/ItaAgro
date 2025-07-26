@@ -273,6 +273,77 @@ export async function subscriptionRoutes(app: FastifyInstance) {
       }
   )
 
+  app.post(
+      '/subscriptions/refresh',
+      { preHandler: [app.authenticate] },
+      async (req, reply) => {
+        const { preapproval_id } = req.body as { preapproval_id: string }
+        const { sub: userId } = req.user as any
+
+        if (!preapproval_id) {
+          return reply.code(400).send({ error: 'preapproval_id não fornecido' })
+        }
+
+        try {
+          // Consulta assinatura diretamente no Mercado Pago
+          const mp = new MercadoPagoClient()
+          const mpSub = await mp.getSubscription(preapproval_id)
+          if (!mpSub) {
+            return reply.code(404).send({ error: 'Assinatura não encontrada no Mercado Pago' })
+          }
+
+          // Busca user pelo userId
+          const userRepo = AppDataSource.getRepository(User)
+          const user = await userRepo.findOne({ where: { id: userId } })
+          if (!user) {
+            return reply.code(404).send({ error: 'Usuário não encontrado' })
+          }
+
+          // Busca ou cria assinatura local
+          const subscriptionRepo = AppDataSource.getRepository(Subscription)
+          let sub = await subscriptionRepo.findOne({
+            where: { externalId: preapproval_id },
+            relations: ['user'],
+          })
+
+          const newStatus = transformMercadoPagoStatus(mpSub.status) as SubscriptionStatus
+
+          if (sub) {
+            sub.status = newStatus
+            sub.expiresAt = mpSub.end_date ? new Date(mpSub.end_date) : undefined
+            sub.plan = mpSub.reason
+            sub.updatedAt = new Date()
+            sub.user = user
+            await subscriptionRepo.save(sub)
+          } else {
+            // Se não existir, opcional: crie localmente
+            sub = subscriptionRepo.create({
+              externalId: preapproval_id,
+              status: newStatus,
+              user,
+              expiresAt: mpSub.end_date ? new Date(mpSub.end_date) : undefined,
+              plan: mpSub.reason,
+            })
+            await subscriptionRepo.save(sub)
+          }
+
+          // Atualize o campo de acesso do usuário
+          const isActive = newStatus === SubscriptionStatus.ACTIVE || newStatus === SubscriptionStatus.AUTHORIZED
+          await userRepo.update(user.id, { subscriptionActive: isActive })
+
+          return reply.send({
+            id: sub.externalId,
+            status: sub.status,
+            next_payment_date: mpSub.next_payment_date,
+            plan: sub.plan,
+          })
+        } catch (error: any) {
+          app.log.error('Erro ao atualizar assinatura:', error)
+          return reply.code(500).send({ error: 'Erro ao atualizar assinatura' })
+        }
+      }
+  )
+
   app.post<{ Body: CancelBody }>('/subscriptions/cancel', cancelOpts,
       async (req: FastifyRequest<{ Body: CancelBody }>, reply: FastifyReply) => {
         const { preapproval_id } = req.body;

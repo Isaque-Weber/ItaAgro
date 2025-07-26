@@ -22,8 +22,6 @@ export async function chatRoutes(app: FastifyInstance) {
             const userId = String((req.user as any).sub)
             const assistantId = process.env.OPENAI_ASSISTANT_ID
             console.log(req.user)
-            console.log('[DEBUG] userId:', userId)
-            console.log('[DEBUG] assistantId:', assistantId)
 
             if (!userId || !assistantId) {
                 return res.status(400).send({ error: 'Usuário ou assistente não identificado.' })
