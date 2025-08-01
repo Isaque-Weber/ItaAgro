@@ -335,7 +335,7 @@ export function Chat() {
         await onLogout();
         navigate('/login');
     }
-    
+
     return (
         <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-neutral-100 dark:bg-[#343541] text-gray-800 dark:text-[#d1d5db]">
             {!menuOpen && (
@@ -523,8 +523,8 @@ export function Chat() {
                             ref={fileInputRef}
                             onChange={e => {
                                 const selectedFile = e.target.files?.[0] || null;
-                                if (selectedFile && selectedFile.size > 2 * 1024 * 1024) { // 2MB
-                                    alert('O arquivo PDF excede o tamanho máximo de 2MB.');
+                                if (selectedFile && selectedFile.size > 5 * 1024 * 1024) { // 5MB
+                                    alert('O arquivo PDF excede o tamanho máximo de 5MB.');
                                     e.target.value = ''; // Limpa o input
                                     setFile(null);
                                 } else {
