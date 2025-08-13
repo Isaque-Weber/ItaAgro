@@ -73,7 +73,7 @@ export async function chatRoutes(app: FastifyInstance) {
 
         const messages = await messageRepo.find({
             where: { session: { id } },
-            order: { createdAt: 'ASC' },
+            order: { createdAt: 'ASC' }
         })
         // Garante sempre array de arquivos, nunca null/undefined
         const withFiles = messages.map(m => ({

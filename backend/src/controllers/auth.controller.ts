@@ -44,7 +44,7 @@ const resendVerificationCodeBodySchema = z.object({
 
 export async function authRoutes(app: FastifyInstance) {
     const repo = AppDataSource.getRepository(User)
-    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com']
+    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com', "elianebueno@itaagro.com"]
 
     app.post('/signup', async (req, reply) => {
         try {

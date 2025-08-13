@@ -7,7 +7,7 @@ import { useUser } from '../contexts/AuthContext';
 export function ProtectedRoute({ children, requireSubscription = true }: { children: JSX.Element, requireSubscription?: boolean }) {
     const { checking, subscribed } = useSubscription();
     const { user, loading: authLoading } = useUser();
-    const isSeedUser = user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com';
+    const isSeedUser = user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com' || user?.email === 'elianebueno@itaagro.com';
 
     if (authLoading || checking) {
         console.log('loading')

@@ -34,11 +34,11 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com'];
+    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com', "elianebueno@itaagro.com"];
     const location = useLocation();
 
     const isSeedUser = useMemo(() => {
-        return user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com';
+        return user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com' || user?.email === 'elianebueno@itaagro.com';
     }, [user?.email]);
 
     const loadUser = (): Promise<void> => {

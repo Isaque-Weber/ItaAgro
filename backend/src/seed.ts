@@ -38,6 +38,7 @@ async function seed() {
     // 3) Seed dos dois usuários
     await upsertUser('admin@itaagro.com', 'itapass', 'admin', 'Administrador')
     await upsertUser('user@itaagro.com',   'itauser', 'user', 'Usuário Padrão')
+    await upsertUser('elianebueno@itaagro.com',   'Elianeteste2025', 'user', 'Usuário Padrão')
 
     console.log('Seed completo')
     await dataSource.destroy()
