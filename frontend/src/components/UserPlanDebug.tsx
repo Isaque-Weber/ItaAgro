@@ -30,7 +30,7 @@ const UserPlanDebug: React.FC = () => {
         <h3 className="font-bold mb-1">Debug Info:</h3>
         <ul className="text-sm">
           <li>Backend URL: {window.location.hostname === 'localhost' ? 
-            'http://localhost:4000' : 'https://itaagro-backend.up.railway.app'}</li>
+            'http://localhost:4000' : 'https://api.itaagroia.com.br'}</li>
           <li>Frontend URL: {window.location.origin}</li>
           <li>Has Cookies: {document.cookie ? 'Yes' : 'No'}</li>
         </ul>

@@ -21,7 +21,7 @@ export async function build(): Promise<FastifyInstance> {
   // 1) CORS
   await app.register(cors, {
     origin: (origin, cb) => {
-      const allowed = ['http://localhost:5173','https://itaagro.up.railway.app', 'https://www.itaagroia.com.br'];
+      const allowed = ['http://localhost:5173','https://itaagro.up.railway.app', '.itaagroia.com.br'];
       if (!origin || allowed.includes(origin)) cb(null, true);
       else cb(new Error('Not allowed by CORS'), false);
     },

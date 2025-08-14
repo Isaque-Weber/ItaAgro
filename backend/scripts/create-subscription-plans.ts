@@ -11,7 +11,7 @@ async function createSubscriptionPlans() {
     options: { timeout: 5000 }
   })
   const planClient = new PreApprovalPlan(config)
-  const backUrl = `https://itaagro.up.railway.app/subscribe/success`
+  const backUrl = `https://api.itaagroia.com.br/subscribe/success`
 
   console.log('🔔 Criando plano mensal...')
   const monthlyRes = await planClient.create({
