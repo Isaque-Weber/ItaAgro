@@ -118,7 +118,7 @@ export async function authRoutes(app: FastifyInstance) {
                     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
                     path: '/',
                     maxAge: 60 * 60 * 24,
-                    domain: process.env.NODE_ENV === 'production' ? '.itaagroia.com.br' : undefined,
+                    // domain: process.env.NODE_ENV === 'production' ? '.itaagroia.com.br' : undefined,
                 })
                 .header('Authorization', `Bearer ${token}`)
                 .send({ success: true, role: user.role })
@@ -202,7 +202,7 @@ export async function authRoutes(app: FastifyInstance) {
                     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
                     path: '/',
                     maxAge: 60 * 60 * 24,
-                    domain: process.env.NODE_ENV === 'production' ? '.itaagroia.com.br' : undefined,
+                    // domain: process.env.NODE_ENV === 'production' ? '.itaagroia.com.br' : undefined,
                 })
                 .header('Authorization', `Bearer ${token}`)
                 .send({ message: 'E-mail verificado com sucesso.' })
