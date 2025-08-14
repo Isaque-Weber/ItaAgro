@@ -279,7 +279,7 @@ export async function authRoutes(app: FastifyInstance) {
             .clearCookie('itaagro_token', {
                 path: '/',
                 httpOnly: true,
-                sameSite: 'lax',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
                 secure: process.env.NODE_ENV === 'production'
             })
             .send({ message: 'Logout realizado com sucesso.' })
