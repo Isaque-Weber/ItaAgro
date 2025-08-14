@@ -41,6 +41,7 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
                 sameSite: 'none',
                 path: '/',
                 maxAge: 60 * 60 * 24,
+                domain: process.env.NODE_ENV === 'production' ? '.itaagroia.com.br' : undefined,
             });
         }
     });
