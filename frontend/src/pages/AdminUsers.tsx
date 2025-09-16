@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 
 type Role = 'admin' | 'user'
 
+
 interface User {
   id: string
+  name: string
   email: string
   role: Role
   status?: string
@@ -20,6 +22,7 @@ export function AdminUsers() {
   const [isModalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
   const [form, setForm] = useState({
+    name: '',
     email: '',
     password: '',
     role: 'user' as Role,
@@ -54,13 +57,13 @@ export function AdminUsers() {
 
   function openNew() {
     setEditing(null)
-    setForm({ email: '', password: '', role: 'user' })
+    setForm({ name: '', email: '', password: '', role: 'user' })
     setModalOpen(true)
   }
 
   function openEdit(u: User) {
     setEditing(u)
-    setForm({ email: u.email, password: '', role: u.role })
+    setForm({ name: u.name, email: u.email, password: '', role: u.role })
     setModalOpen(true)
   }
 
@@ -70,7 +73,7 @@ export function AdminUsers() {
           ? `${import.meta.env.VITE_API_BASE_URL}/admin/users/${editing.id}`
           : `${import.meta.env.VITE_API_BASE_URL}/admin/users`
       const method = editing ? 'PUT' : 'POST'
-      const body: any = { email: form.email, role: form.role }
+      const body: any = { name: form.name, email: form.email, role: form.role }
       if (form.password) body.password = form.password
 
       const res = await fetch(url, {
@@ -138,12 +141,10 @@ export function AdminUsers() {
             <table className="w-full text-left">
               <thead className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
               <tr>
-                <th className="p-3">ID</th>
+                <th className="p-3">Nome</th>
                 <th className="p-3">E-mail</th>
                 <th className="p-3">Papel</th>
-                <th className="p-3">Status</th>
                 <th className="p-3">Criado em</th>
-                <th className="p-3">Último login</th>
                 <th className="p-3">Ações</th>
               </tr>
               </thead>
@@ -153,17 +154,11 @@ export function AdminUsers() {
                       key={u.id}
                       className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
-                    <td className="p-3 text-sm">{u.id}</td>
+                    <td className="p-3 text-sm">{u.name}</td>
                     <td className="p-3 text-sm">{u.email}</td>
                     <td className="p-3 text-sm">{u.role}</td>
-                    <td className="p-3 text-sm">{u.status ?? '—'}</td>
                     <td className="p-3 text-sm">
                       {new Date(u.createdAt).toLocaleString()}
-                    </td>
-                    <td className="p-3 text-sm">
-                      {u.lastLogin
-                          ? new Date(u.lastLogin).toLocaleString()
-                          : '—'}
                     </td>
                     <td className="flex gap-2 px-3 py-2">
                       <button
@@ -191,6 +186,18 @@ export function AdminUsers() {
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                     {editing ? 'Editar Usuário' : 'Novo Usuário'}
                   </h2>
+
+                  <label className="block text-gray-700 dark:text-gray-200">
+                    <span>Nome</span>
+                    <input
+                        type="text"
+                        value={form.name}
+                        onChange={(e) =>
+                            setForm((f) => ({ ...f, name: e.target.value }))
+                        }
+                        className="mt-1 w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </label>
 
                   <label className="block text-gray-700 dark:text-gray-200">
                     <span>E-mail</span>
@@ -251,3 +258,4 @@ export function AdminUsers() {
       </div>
   )
 }
+

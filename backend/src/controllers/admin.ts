@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { Repository }          from 'typeorm'
 import { AppDataSource }   from '../services/typeorm/data-source'
 import { User }            from '../entities/User'
-import {Subscription} from "../entities/Subscription";
+import {Subscription} from "../entities/Subscription"
 
 export async function adminRoutes(app: FastifyInstance) {
     const checkAdmin = async (req: FastifyRequest, reply: FastifyReply) => {
@@ -18,7 +18,7 @@ export async function adminRoutes(app: FastifyInstance) {
         async () => {
             const repo = AppDataSource.getRepository(User)
             return await repo.find({
-                select: ['id','email','role','createdAt'],
+                select: ['id', 'name', 'email','role','createdAt'],
             })
         }
     )
@@ -35,8 +35,9 @@ export async function adminRoutes(app: FastifyInstance) {
         schema: {
             body: {
                 type: 'object',
-                required: ['email', 'password', 'role'],
+                required: ['name', 'email', 'password', 'role'],
                 properties: {
+                    name:     { type: 'string', minLength: 3 },
                     email:    { type: 'string', format: 'email' },
                     password: { type: 'string', minLength: 6 },
                     role: { type: 'string', enum: ['user', 'admin']}
@@ -45,9 +46,8 @@ export async function adminRoutes(app: FastifyInstance) {
         }
         },
         async (req, reply) => {
-            const { email, password, role } = req.body as any
-            // Lembrar do hash de senha em prod"
-            const u = userRepo.create({ email, password, role })
+            const { name, email, password, role } = req.body as any
+            const u = userRepo.create({ name, email, password, role })
             await userRepo.save(u)
             return reply.code(201).send({ message: 'Usuário criado com sucesso' })
         }
