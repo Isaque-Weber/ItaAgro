@@ -58,7 +58,7 @@ Nos termos da LGPD, você pode:
 - Revogar o consentimento;
 - Portar os dados para outro serviço.
 
-Para exercer esses direitos, envie um e-mail para **contato@itaagro.com**
+Para exercer esses direitos, envie um e-mail para **itasistemaia@gmail.com**
 
 ## 7. Segurança da informação
 
