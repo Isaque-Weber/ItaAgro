@@ -34,11 +34,11 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com', "elianebueno@itaagro.com"];
+    const SEED_USERS = ['admin@itaagroia.com.br', 'user@itaagroia.com.br', 'elianebueno@itaagroia.com.br', 'tatu@itaagroia.com.br', 'luiz@itaagroia.com.br', 'ivo@itaagroia.com.br', 'vinicius@itaagroia.com.br'];
     const location = useLocation();
 
     const isSeedUser = useMemo(() => {
-        return user?.email === 'admin@itaagro.com' || user?.email === 'user@itaagro.com' || user?.email === 'elianebueno@itaagro.com';
+        return user?.email === 'admin@itaagroia.com.br' || user?.email === 'user@itaagroia.com.br' || user?.email === 'elianebueno@itaagroia.com.br' || user?.email === 'tatu@itaagroia.com.br' || user?.email === 'luiz@itaagroia.com.br' || user?.email === 'ivo@itaagroia.com.br' || user?.email === 'vinicius@itaagroia.com.br';
     }, [user?.email]);
 
     const loadUser = (): Promise<void> => {

@@ -58,7 +58,7 @@ export async function build(): Promise<FastifyInstance> {
   // 5) Chat (assinantes)
   async function requireActiveSubscription(req: FastifyRequest, reply: FastifyReply) {
     const user = req.user as any;
-    const SEED_USERS = ['admin@itaagro.com', 'user@itaagro.com', "elianebueno@itaagro.com"];
+    const SEED_USERS = ['admin@itaagroia.com.br', 'user@itaagroia.com.br', 'elianebueno@itaagroia.com.br', 'tatu@itaagroia.com.br', 'luiz@itaagroia.com.br', 'ivo@itaagroia.com.br', 'vinicius@itaagroia.com.br'];
     if (user.role === 'admin' || SEED_USERS.includes(user.email)) return;
     const { AppDataSource } = await import('./services/typeorm/data-source');
     const { Subscription, SubscriptionStatus } = await import('./entities/Subscription');
