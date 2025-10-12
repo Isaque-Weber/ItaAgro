@@ -1,8 +1,9 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
+if (process.env.NODE_ENV !== 'production') {
+    dotenv.config();
+}
 
 const { GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD } = process.env;
 
