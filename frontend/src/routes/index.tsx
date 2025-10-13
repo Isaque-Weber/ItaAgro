@@ -8,7 +8,6 @@ import DashboardUsers from "../pages/DashboardUsers"
 import { SubscribePage } from '../pages/SubscribePage'
 import { SuccessPage } from '../pages/SuccessPage'
 import { ProtectedRoute } from "../components/ProtectedRoute"
-import { GoogleCallback } from '../pages/GoogleCallback'
 import VerifyEmail from '../pages/VerifyEmail'
 import { useAuth } from '../contexts/AuthContext'
 import { TermsPage } from '../pages/TermsPage'
@@ -75,7 +74,6 @@ export function AppRoutes() {
                 }
             />
             <Route path="/subscribe/success" element={<SuccessPage />} />
-            <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="*" element={<Navigate to={isAuth ? "/" : "/login"} replace />} />
             <Route path="/termos" element={<TermsPage />} />
             <Route path="/privacidade" element={<PrivacyPage />} />
