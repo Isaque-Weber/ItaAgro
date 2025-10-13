@@ -1,7 +1,16 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+    dotenv.config();
+}
+
+console.log("===== VARIÁVEIS DE AMBIENTE =====");
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("GMAIL_SENDER_EMAIL:", process.env.GMAIL_SENDER_EMAIL);
+console.log("GMAIL_APP_PASSWORD:", process.env.GMAIL_APP_PASSWORD ? "✅ definida" : "❌ indefinida");
+console.log("=================================");
+
 
 const { GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD } = process.env;
 
