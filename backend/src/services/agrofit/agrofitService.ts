@@ -6,7 +6,7 @@ import { Pest } from '../../entities/Pest'
 import { Brand } from '../../entities/Brand'
 import { ActiveIngredient } from '../../entities/ActiveIngredient'
 import dotenv from 'dotenv'
-import nodemailer from 'nodemailer'
+import { sendAlertEmail } from '../../utils/mailer';
 import { ProdutoAgrofit } from '../../../@types/agrofit'
 
 dotenv.config()
@@ -32,7 +32,6 @@ export class AgrofitService {
     private requestsThisMonth = 0;
     private requestLimit = 100000;
     private alertThreshold: number;
-    private mailer;
 
     constructor() {
         this.requestLimit = parseInt(process.env.AGROFIT_REQUEST_LIMIT || '100000', 10)
@@ -55,28 +54,17 @@ export class AgrofitService {
             return config;
         })
 
-        this.mailer = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: parseInt(process.env.SMTP_PORT || '587', 10),
-            secure: false,
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
-            }
-        })
     }
 
     private async sendAlertEmail(message: string) {
         try {
-            await this.mailer.sendMail({
-                from: process.env.SMTP_FROM,
-                to: process.env.ALERT_EMAIL,
-                subject: message,
-                text: `AgrofitService: ${message}\nTotal de requisições no mês: ${this.requestsThisMonth}`
-            });
+            await sendAlertEmail(
+                message,
+                `Total de requisições no mês: ${this.requestsThisMonth}`
+            );
             console.log('🚨 Alerta enviado:', message);
         } catch (err) {
-            console.error('Erro ao enviar e‑mail de alerta:', err);
+            console.error('Erro ao enviar e-mail de alerta:', err);
         }
     }
 

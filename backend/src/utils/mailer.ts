@@ -1,113 +1,110 @@
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
+// src/utils/mailer.ts
+import { Resend } from 'resend';
+import dotenv from 'dotenv';
 
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
     dotenv.config();
 }
 
-// === Valida variáveis de ambiente ===
-const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+const { RESEND_API_KEY, SMTP_FROM, ALERT_EMAIL } = process.env;
 
-if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
-    throw new Error("As variáveis de ambiente SMTP não estão configuradas corretamente.");
+if (!RESEND_API_KEY) {
+    throw new Error('A variável RESEND_API_KEY não está configurada.');
 }
 
-// === Cria o transporter usando Resend SMTP ===
-const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: Number(SMTP_PORT) === 465, // true para 465 (SSL)
-    auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-    },
-});
+export const resend = new Resend(RESEND_API_KEY);
 
-// === Função base para envio ===
-async function sendEmail(to: string, subject: string, htmlContent: string): Promise<void> {
-    console.log("🔹 Tentando enviar e-mail para:", to);
-    console.log("🔹 SMTP_HOST:", SMTP_HOST);
-    console.log("🔹 NODE_ENV:", process.env.NODE_ENV);
+async function sendEmail(to: string, subject: string, html: string, text?: string): Promise<void> {
+    console.log('📤 Enviando e-mail via Resend...');
+    console.log('🔹 Para:', to);
+    console.log('🔹 Assunto:', subject);
 
     try {
-        await transporter.sendMail({
-            from: `ItaAgro <${SMTP_USER}>`,
+        const result = await resend.emails.send({
+            from: SMTP_FROM || 'ItaAgro <noreply@itaagroia.com.br>',
             to,
             subject,
-            html: htmlContent,
+            html,
+            text,
         });
 
-        console.log("✅ E-mail enviado com sucesso!");
-    } catch (error: any) {
-        console.error("❌ Erro ao enviar e-mail:", error.message || error);
-        console.error("Stack:", error.stack);
-        throw error;
+        if (result.error) {
+            console.error('❌ Falha no envio:', result.error);
+        } else {
+            console.log('✅ E-mail enviado com sucesso! ID:', result.data?.id);
+        }
+    } catch (err: any) {
+        console.error('❌ Erro ao enviar e-mail:', err.message || err);
+        console.error(err.stack);
+        throw err;
     }
 }
 
-// === Funções específicas ===
-
-// 1️⃣ Envio de código de verificação
+// 1️⃣ Código de verificação
 export async function sendVerificationCodeEmail(to: string, code: string): Promise<void> {
-    const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>Seu código de verificação ItaAgro</h2>
-      <p>Use o seguinte código para ativar sua conta:</p>
-      <div style="font-size: 32px; font-weight: bold; margin: 20px 0;">${code}</div>
-      <p>Este código expira em 15 minutos.</p>
-    </div>
-  `;
-    await sendEmail(to, "Código de Verificação - ItaAgro", htmlContent);
+    const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2>Seu código de verificação ItaAgro</h2>
+    <p>Use o seguinte código para ativar sua conta:</p>
+    <div style="font-size: 32px; font-weight: bold; margin: 20px 0;">${code}</div>
+    <p>Este código expira em 15 minutos.</p>
+  </div>`;
+    await sendEmail(to, 'Código de Verificação - ItaAgro', html);
 }
 
-// 2️⃣ Envio de link de recuperação
+// 2️⃣ Link de recuperação de senha
 export async function sendRecoveryEmail(to: string, resetUrl: string): Promise<void> {
-    const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>Recuperação de Senha - ItaAgro</h2>
-      <p>Você solicitou a recuperação de senha.</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${resetUrl}" style="background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; display: inline-block;">Redefinir Senha</a>
-      </div>
-      <p>Se o botão não funcionar, copie e cole o link abaixo no navegador:</p>
-      <p style="word-break: break-all; color: #666;">${resetUrl}</p>
-      <p>Este link expira em 24 horas.</p>
-      <hr style="border: 1px solid #eee; margin: 30px 0;">
-      <p style="color: #666; font-size: 12px;">Se você não solicitou esta recuperação, ignore este e-mail.</p>
+    const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2>Recuperação de Senha - ItaAgro</h2>
+    <p>Você solicitou a recuperação de senha.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${resetUrl}" style="background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px;">Redefinir Senha</a>
     </div>
-  `;
-    await sendEmail(to, "Recuperação de Senha - ItaAgro", htmlContent);
+    <p>Se o botão não funcionar, copie e cole o link abaixo no navegador:</p>
+    <p style="word-break: break-all; color: #666;">${resetUrl}</p>
+    <p>Este link expira em 24 horas.</p>
+  </div>`;
+    await sendEmail(to, 'Recuperação de Senha - ItaAgro', html);
 }
 
-// 3️⃣ Envio de e-mail de verificação de conta
+// 3️⃣ Verificação de conta
 export async function sendVerificationEmail(to: string, verificationUrl: string): Promise<void> {
-    const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>Bem-vindo à ItaAgro!</h2>
-      <p>Para ativar sua conta, clique no botão abaixo:</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; display: inline-block;">Verificar E-mail</a>
-      </div>
-      <p>Se o botão não funcionar, copie e cole o link abaixo no navegador:</p>
-      <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
-      <p>Este link expira em 24 horas.</p>
+    const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2>Bem-vindo à ItaAgro!</h2>
+    <p>Para ativar sua conta, clique no botão abaixo:</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${verificationUrl}" style="background-color: #4CAF50; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px;">Verificar E-mail</a>
     </div>
-  `;
-    await sendEmail(to, "Verifique seu E-mail - ItaAgro", htmlContent);
+    <p>Se o botão não funcionar, copie e cole o link abaixo no navegador:</p>
+    <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
+  </div>`;
+    await sendEmail(to, 'Verifique seu E-mail - ItaAgro', html);
 }
 
-// 4️⃣ Envio de código de redefinição de senha
+// 4️⃣ Código para redefinição de senha
 export async function sendPasswordResetCodeEmail(to: string, code: string): Promise<void> {
-    const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>Recuperação de Senha - ItaAgro</h2>
-      <p>Use o código abaixo para redefinir sua senha. Ele é válido por 15 minutos.</p>
-      <div style="font-size: 32px; font-weight: bold; margin: 20px 0;">${code}</div>
-      <p>Se você não solicitou esta recuperação, pode ignorar este e-mail.</p>
-    </div>
-  `;
-    await sendEmail(to, "Código para Redefinir Senha - ItaAgro", htmlContent);
+    const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2>Recuperação de Senha - ItaAgro</h2>
+    <p>Use o código abaixo para redefinir sua senha (válido por 15 minutos):</p>
+    <div style="font-size: 32px; font-weight: bold; margin: 20px 0;">${code}</div>
+    <p>Se você não solicitou, ignore este e-mail.</p>
+  </div>`;
+    await sendEmail(to, 'Código para Redefinir Senha - ItaAgro', html);
 }
 
-// Exporta função base também
+// 5️⃣ Alerta genérico (ex: Agrofit)
+export async function sendAlertEmail(message: string, details?: string): Promise<void> {
+    const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2>🚨 Alerta do Sistema ItaAgro</h2>
+    <p>${message}</p>
+    ${details ? `<pre style="background:#f8f8f8;padding:10px;border-radius:6px;">${details}</pre>` : ''}
+  </div>`;
+    const to = ALERT_EMAIL || SMTP_FROM!;
+    await sendEmail(to, '🚨 Alerta do Sistema - ItaAgro', html, message);
+}
+
 export { sendEmail };
