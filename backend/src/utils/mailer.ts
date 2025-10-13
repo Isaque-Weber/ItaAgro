@@ -27,12 +27,23 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendEmail(to: string, subject: string, htmlContent: string): Promise<void> {
-  await transporter.sendMail({
-    from: `ItaAgro <${GMAIL_SENDER_EMAIL}>`,
-    to,
-    subject,
-    html: htmlContent,
-  });
+    console.log('🔹 Tentando enviar email para:', to);
+    console.log('🔹 GMAIL_SENDER_EMAIL:', process.env.GMAIL_SENDER_EMAIL);
+    console.log('🔹 NODE_ENV:', process.env.NODE_ENV);
+
+    try {
+        await transporter.sendMail({
+            from: `ItaAgro <${process.env.GMAIL_SENDER_EMAIL}>`,
+            to,
+            subject,
+            html: htmlContent,
+        });
+        console.log('✅ Email enviado com sucesso!');
+    } catch (error: any) {
+        console.error('❌ Erro ao enviar email:', error.message || error);
+        console.error('Stack:', error.stack);
+        throw error;
+    }
 }
 
 // Mantém suas funções de envio de e-mail (sem alteração)
