@@ -1,6 +1,6 @@
 // src/controllers/subscription.ts
 import { FastifyInstance, FastifyRequest, FastifyReply, RouteShorthandOptions } from 'fastify';
-import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago'
+import { MercadoPagoConfig, PreApprovalPlan } from 'mercadopago'
 import dotenv from 'dotenv'
 import { AppDataSource } from '../services/typeorm/data-source'
 import { Subscription, SubscriptionStatus } from '../entities/Subscription'
@@ -123,9 +123,9 @@ export async function subscriptionRoutes(app: FastifyInstance) {
           external_reference:  `user_${userId}`
         }
 
-        app.log.info('🚀 Enviando para MP:', JSON.stringify(payload, null, 2))
+          app.log.info(`🚀 Enviando para MP: ${JSON.stringify(payload, null, 2)}`);
 
-        try {
+          try {
           // 5) Chama a API do Mercado Pago direto com fetch
           const mpRes = await fetch('https://api.mercadopago.com/preapproval', {
             method: 'POST',

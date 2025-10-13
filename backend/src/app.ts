@@ -89,7 +89,7 @@ export async function build(): Promise<FastifyInstance> {
       await syncSubscriptionsJob();
       app.log.info('Job de sincronização concluído.');
     } catch (err) {
-      app.log.error('Erro no job de sincronização:', err);
+        app.log.error({ err }, 'Erro no job de sincronização');
     }
   });
   syncSubscriptionsJob()

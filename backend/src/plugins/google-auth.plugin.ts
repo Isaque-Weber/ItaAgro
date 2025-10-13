@@ -90,8 +90,8 @@ export async function googleAuthPlugin(app: FastifyInstance): Promise<void> {
           `${process.env.FRONTEND_URL}/password-recovery?token=${resetToken}`
       )
     } catch (err) {
-      request.log.error('Erro no callback Google password-recovery:', err)
-      return reply.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`)
+        request.log.error({ err }, 'Erro no callback Google password-recovery');
+        return reply.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`)
     }
   })
 }
