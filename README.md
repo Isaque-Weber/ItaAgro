@@ -111,6 +111,7 @@ A aplicação estará disponível em `http://localhost:5173`.
 
 Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e pull requests.
 
+
 ## Licença
 
 Este projeto é licenciado sob a licença MIT.
