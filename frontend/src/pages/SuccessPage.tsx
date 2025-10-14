@@ -116,7 +116,7 @@ export function SuccessPage() {
                             <p className="text-center">Detalhes não disponíveis.</p>
                         )}
                         <button
-                            onClick={() => navigate('/')}
+                            onClick={() => navigate('/chat')}
                             className="mt-6 w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded"
                         >
                             Ir para o Chat
