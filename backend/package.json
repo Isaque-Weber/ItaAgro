@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "seed": "tsx src/seed.ts",
-    "create-plans": "tsx scripts/create-subscription-plans.ts",
+    "create-plans": "tsx src/services/mercadopago/plans/create-subscription-plans.ts",
     "update-assistant-tools": "tsx src/scripts/updateAssistantTools.ts",
     "migration:generate:custom": "tsx node_modules/typeorm/cli.js migration:generate --dataSource src/services/typeorm/data-source.ts",
     "migration:generate": "tsx node_modules/typeorm/cli.js migration:generate --dataSource src/services/typeorm/data-source.ts -n InitSchema",
