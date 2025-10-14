@@ -1,8 +1,5 @@
 import axios from 'axios'
 
-/**
- * Cliente para integração com a API de Assinaturas do Mercado Pago
- */
 export class MercadoPagoClient {
   private accessToken: string
   private baseURL = 'https://api.mercadopago.com'
@@ -49,12 +46,17 @@ export class MercadoPagoClient {
       console.log('[MP API] Total de assinaturas buscadas:', results.length)
       return results
   }
-
-
-  /**
-   * Consulta detalhes de uma assinatura (preapproval) pelo ID
-   * @returns Detalhes da assinatura ou null se não encontrada (404)
-   */
+    async getPayment(paymentId: string) {
+        try {
+            const { data } = await axios.get(`${this.baseURL}/v1/payments/${paymentId}`, {
+                headers: { Authorization: `Bearer ${this.accessToken}` }
+            })
+            return data
+        } catch (err: any) {
+            console.error('Erro ao buscar pagamento no Mercado Pago:', err.response?.data || err.message)
+            throw err
+        }
+    }
   async getSubscription(id: string) {
     try {
       const response = await axios.get(`${this.baseURL}/preapproval/${id}`, {
@@ -75,9 +77,6 @@ export class MercadoPagoClient {
   }
 }
 
-/**
- * Converte status do Mercado Pago para o formato interno
- */
 export function transformMercadoPagoStatus(mpStatus: string) {
   const statusMap: Record<string, string> = {
     'authorized': 'authorized',
@@ -94,9 +93,6 @@ export function transformMercadoPagoStatus(mpStatus: string) {
   return statusMap[mpStatus] || 'pending'
 }
 
-/**
- * Valida assinatura HMAC do webhook do Mercado Pago
- */
 export function validateWebhookSignature(
   payload: string,
   signature: string,

@@ -12,42 +12,42 @@ async function createSubscriptionPlans() {
     const planClient = new PreApprovalPlan(config)
 
     const backUrl = 'https://itaagroia.com.br/subscribe/success'
-    const notificationUrl = 'https://api.itaagroia.com.br/webhook/mercadopago'
+    const notificationUrl = 'https://api.itaagroia.com.br/payments/webhook'
 
     console.log('🔔 Criando plano mensal...')
     const monthlyRes = await planClient.create({
         body: {
-            reason: 'Plano Standard Ita Agro',
-            back_url: backUrl,
-            notification_url: notificationUrl, // <- Aceito pela API, mas não tipado
-            auto_recurring: {
-                frequency: 1,
-                frequency_type: 'months',
-                transaction_amount: 69.90,
-                currency_id: 'BRL',
-                start_date: new Date().toISOString(), // <- Aceito, mas não tipado
-            },
-        } as any, // força a aceitação do objeto completo
-    })
-    console.log('✅ Plano mensal criado:', monthlyRes.id)
-
-    console.log('🔔 Criando plano anual (10% off)...')
-    const yearlyRes = await planClient.create({
-        body: {
-            reason: 'Plano Premium Anual Ita Agro (10% de desconto)',
+            reason: 'Plano Premium Ita Agro',
             back_url: backUrl,
             notification_url: notificationUrl,
             auto_recurring: {
                 frequency: 1,
                 frequency_type: 'months',
-                repetitions: 12,
-                transaction_amount: 62.10,
+                transaction_amount: 69.90,
                 currency_id: 'BRL',
                 start_date: new Date().toISOString(),
             },
-        } as any,
+        } as any, // força a aceitação do objeto completo
     })
-    console.log('✅ Plano anual criado:', yearlyRes.id)
+    console.log('✅ Plano mensal criado:', monthlyRes.id)
+
+    // console.log('🔔 Criando plano anual (10% off)...')
+    // const yearlyRes = await planClient.create({
+    //     body: {
+    //         reason: 'Plano Premium Anual Ita Agro (10% de desconto)',
+    //         back_url: backUrl,
+    //         notification_url: notificationUrl,
+    //         auto_recurring: {
+    //             frequency: 1,
+    //             frequency_type: 'months',
+    //             repetitions: 12,
+    //             transaction_amount: 62.10,
+    //             currency_id: 'BRL',
+    //             start_date: new Date().toISOString(),
+    //         },
+    //     } as any,
+    // })
+    // console.log('✅ Plano anual criado:', yearlyRes.id)
 }
 
 createSubscriptionPlans().catch(err => {

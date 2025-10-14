@@ -1,237 +1,135 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import crypto from 'crypto'
+import { MercadoPagoClient } from '../services/mercadopago'
 import { AppDataSource } from '../services/typeorm/data-source'
 import { Subscription, SubscriptionStatus } from '../entities/Subscription'
 import { User } from '../entities/User'
-import { MercadoPagoClient } from '../services/mercadopago'
 
-// Estendendo o tipo FastifyRequest para incluir rawBody
 declare module 'fastify' {
-  interface FastifyRequest {
-    rawBody?: string | Buffer
-  }
+    interface FastifyRequest {
+        rawBody?: string | Buffer
+    }
 }
 
 interface WebhookPayload {
-  action: string
-  data: {
-    id: string
-  }
-  type: string
+    action: string
+    type: string
+    data: { id: string }
 }
 
 export async function paymentWebhookRoutes(app: FastifyInstance) {
-  const subscriptionRepo = AppDataSource.getRepository(Subscription)
-  const userRepo = AppDataSource.getRepository(User)
-  const preapprovalClient = new MercadoPagoClient()
+    const mpClient = new MercadoPagoClient()
+    const subscriptionRepo = AppDataSource.getRepository(Subscription)
+    const userRepo = AppDataSource.getRepository(User)
 
-  // Parser para pegar o corpo bruto (necessário para verificar assinatura)
-  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
-    try {
-      req.rawBody = body
-      done(null, {})
-    } catch (err) {
-      done(err as Error, {})
-    }
-  })
+    // 🧩 Necessário para capturar o corpo bruto (validação de assinatura)
+    app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+        req.rawBody = body
+        done(null, body)
+    })
 
-  app.post('/webhook', async (req: FastifyRequest, reply: FastifyReply) => {
-    const rawBody = req.rawBody as string || ''
-    const signature = req.headers['x-mp-signature'] as string
-    const webhookSecret = process.env.MP_WEBHOOK_SECRET
+    app.post('/webhook', async (req: FastifyRequest, reply: FastifyReply) => {
+        const rawBody = req.rawBody as string
+        const signature = req.headers['x-signature'] as string
+        const requestId = req.headers['x-request-id'] as string
+        const secret = process.env.MP_WEBHOOK_SECRET
 
-    app.log.info('Webhook do Mercado Pago recebido')
+        app.log.info('💰 Webhook de pagamento recebido')
+        app.log.info({ headers: req.headers })
 
-    // Validação da assinatura
-    if (process.env.NODE_ENV === 'production') {
-      if (!signature || !webhookSecret) {
-        app.log.error('Assinatura ou segredo do webhook não fornecidos')
-        return reply.code(401).send({ error: 'Assinatura inválida' })
-      }
-
-      try {
-        const isValid = verifyMpSignature(signature, rawBody, webhookSecret)
-        if (!isValid) {
-          app.log.error('Assinatura do webhook inválida')
-          return reply.code(401).send({ error: 'Assinatura inválida' })
-        }
-      } catch (error) {
-        app.log.error(`Erro ao validar assinatura: ${error}`)
-        return reply.code(500).send({ error: 'Erro ao validar assinatura' })
-      }
-    } else {
-      app.log.info('Ambiente de desenvolvimento: validação de assinatura ignorada')
-    }
-
-    // Parsing seguro do JSON
-    let payload: WebhookPayload
-    try {
-      payload = JSON.parse(rawBody)
-      app.log.info(`Payload processado: ${JSON.stringify(payload)}`)
-    } catch (error) {
-      app.log.error(`Erro ao processar JSON: ${error}`)
-      return reply.code(400).send({ error: 'JSON inválido' })
-    }
-
-    // Filtra apenas eventos relacionados a assinaturas
-    if (
-        payload.type !== 'preapproval' &&
-        payload.type !== 'subscription_preapproval'
-    ) {
-      app.log.info(`Evento ignorado: ${payload.type}`)
-      return reply.code(200).send({ received: true, processed: false })
-    }
-
-    try {
-      // Consulta detalhes da assinatura no Mercado Pago
-      app.log.info(`Consultando assinatura ${payload.data.id} no Mercado Pago`)
-      const mpSubscription = await preapprovalClient.getSubscription(payload.data.id)
-
-      // Se a assinatura não foi encontrada no Mercado Pago
-      if (!mpSubscription) {
-        app.log.warn(`Assinatura ${payload.data.id} não encontrada no Mercado Pago`)
-
-        // Se for uma ação de atualização ou cancelamento, tente processar localmente
-        if (payload.action === 'updated' || payload.action === 'cancelled') {
-          // Busca assinatura existente pelo ID externo
-          const existingSubscription = await subscriptionRepo.findOne({
-            where: { externalId: payload.data.id },
-            relations: ['user']
-          })
-
-          if (existingSubscription) {
-            app.log.info(`Assinatura encontrada localmente: ${existingSubscription.id}`)
-
-            // Se for cancelamento, atualizamos o status
-            if (payload.action === 'cancelled') {
-              existingSubscription.status = SubscriptionStatus.CANCELED
-              await subscriptionRepo.save(existingSubscription)
-
-              // Desativa o campo subscriptionActive do usuário
-              if (existingSubscription.user && existingSubscription.user.id) {
-                await userRepo.update(existingSubscription.user.id, { subscriptionActive: false })
-                app.log.info(`Usuário ${existingSubscription.user.email || existingSubscription.user.id} agora está com subscriptionActive = false`)
-              }
+        // -----------------------------
+        // 1️⃣ Validação da assinatura
+        // -----------------------------
+        if (process.env.NODE_ENV === 'production') {
+            if (!signature || !secret || !requestId) {
+                app.log.error('Assinatura, segredo ou request-id ausentes')
+                return reply.code(401).send({ error: 'Assinatura inválida' })
             }
 
-            return reply.code(200).send({ received: true, processed: true })
-          }
+            const matchTs = signature.match(/ts=([^,]+)/)
+            const matchV1 = signature.match(/v1=([^,]+)/)
+            const ts = matchTs?.[1]
+            const v1 = matchV1?.[1]
+
+            if (!ts || !v1) {
+                app.log.error('Cabeçalho x-signature em formato incorreto')
+                return reply.code(401).send({ error: 'Assinatura inválida' })
+            }
+
+            // Extrai o ID do pagamento do corpo
+            let paymentId = ''
+            try {
+                const parsed = JSON.parse(rawBody)
+                paymentId = parsed?.data?.id ?? ''
+            } catch {}
+
+            if (!paymentId) {
+                app.log.error('Webhook de pagamento sem data.id')
+                return reply.code(400).send({ error: 'Webhook inválido' })
+            }
+
+            // Monta o manifest conforme doc oficial
+            const manifest = `id:${paymentId};request-id:${requestId};ts:${ts};`
+            const generatedHash = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
+
+            app.log.info({ manifest, generatedHash, receivedHash: v1 })
+
+            if (generatedHash !== v1) {
+                app.log.error('❌ Assinatura HMAC inválida')
+                return reply.code(401).send({ error: 'Assinatura inválida (hash incorreto)' })
+            }
+        } else {
+            app.log.info('🔓 Ambiente de desenvolvimento: validação ignorada')
         }
 
-        // Se não encontrou localmente ou não é uma ação que podemos processar
-        return reply.code(200).send({ received: true, processed: false, reason: 'subscription_not_found' })
-      }
-
-      // Mapeia o status do Mercado Pago para o enum SubscriptionStatus
-      let status: SubscriptionStatus
-      switch (mpSubscription.status) {
-        case 'authorized':
-          status = SubscriptionStatus.AUTHORIZED
-          break
-        case 'paused':
-        case 'pending':
-        case 'in_process':
-        case 'payment_in_process':
-        case 'payment_failed':
-          status = SubscriptionStatus.PENDING
-          break
-        case 'cancelled':
-          status = SubscriptionStatus.CANCELED
-          break
-        case 'approved':
-        case 'charged':
-          status = SubscriptionStatus.ACTIVE
-          break
-        default:
-          status = SubscriptionStatus.PENDING
-      }
-
-      app.log.info(`Status da assinatura: ${mpSubscription.status} -> ${status}`)
-
-      // Busca assinatura existente pelo ID externo
-      let subscription = await subscriptionRepo.findOne({
-        where: { externalId: payload.data.id },
-        relations: ['user']
-      })
-
-      if (subscription) {
-        // Atualiza assinatura existente
-        app.log.info(`Atualizando assinatura existente: ${subscription.id}`)
-        subscription.status = status
-
-        if (mpSubscription.end_date) {
-          subscription.expiresAt = new Date(mpSubscription.end_date)
+        // -----------------------------
+        // 2️⃣ Processamento do evento
+        // -----------------------------
+        let payload: WebhookPayload
+        try {
+            payload = JSON.parse(rawBody)
+        } catch (err) {
+            app.log.error(`Erro ao parsear JSON: ${err}`)
+            return reply.code(400).send({ error: 'JSON inválido' })
         }
 
-        await subscriptionRepo.save(subscription)
-
-        // --- ATUALIZA O CAMPO NO USUÁRIO ---
-        const isActive = status === SubscriptionStatus.ACTIVE || status === SubscriptionStatus.AUTHORIZED
-        if (subscription.user && subscription.user.id) {
-          await userRepo.update(subscription.user.id, { subscriptionActive: isActive })
-          app.log.info(
-              `Usuário ${subscription.user.email || subscription.user.id} agora está com subscriptionActive = ${isActive}`
-          )
-        }
-      } else {
-        // Cria nova assinatura
-        app.log.info(`Criando nova assinatura para ${mpSubscription.payer_email}`)
-
-        // Busca usuário pelo email
-        const user = await userRepo.findOne({
-          where: { email: mpSubscription.payer_email }
-        })
-
-        if (!user) {
-          app.log.error(`Usuário não encontrado para o email: ${mpSubscription.payer_email}`)
-          return reply.code(404).send({ error: 'Usuário não encontrado' })
+        if (payload.type !== 'payment' || !payload.data?.id) {
+            app.log.info(`Evento ignorado: ${payload.type}`)
+            return reply.code(200).send({ received: true, processed: false })
         }
 
-        subscription = subscriptionRepo.create({
-          externalId: payload.data.id,
-          status,
-          user,
-          expiresAt: mpSubscription.end_date ? new Date(mpSubscription.end_date) : undefined
-        })
+        try {
+            // Consulta o pagamento no Mercado Pago
+            const payment = await mpClient.getPayment(payload.data.id)
+            app.log.info(`💳 Pagamento ${payload.data.id} status=${payment.status}`)
 
-        await subscriptionRepo.save(subscription)
+            // Aqui você pode relacionar o pagamento com uma assinatura local
+            const subscription = await subscriptionRepo.findOne({
+                where: { externalId: payment.preapproval_id },
+                relations: ['user'],
+            })
 
-        // --- ATUALIZA O CAMPO NO USUÁRIO ---
-        const isActive = status === SubscriptionStatus.ACTIVE || status === SubscriptionStatus.AUTHORIZED
-        if (user.id) {
-          await userRepo.update(user.id, { subscriptionActive: isActive })
-          app.log.info(
-              `Usuário ${user.email || user.id} agora está com subscriptionActive = ${isActive}`
-          )
+            if (subscription) {
+                const isPaid = payment.status === 'approved' || payment.status === 'accredited'
+                subscription.status = isPaid
+                    ? SubscriptionStatus.ACTIVE
+                    : SubscriptionStatus.PENDING
+
+                await subscriptionRepo.save(subscription)
+
+                await userRepo.update(subscription.user.id, {
+                    subscriptionActive: isPaid,
+                })
+
+                app.log.info(`✅ Assinatura ${subscription.id} atualizada: ${subscription.status}`)
+            } else {
+                app.log.warn(`Nenhuma assinatura encontrada para preapproval_id ${payment.preapproval_id}`)
+            }
+
+            return reply.code(200).send({ received: true })
+        } catch (error) {
+            app.log.error(`Erro ao processar webhook de pagamento: ${error}`)
+            return reply.code(500).send({ error: 'Erro interno ao processar webhook' })
         }
-      }
-
-      return reply.code(200).send({ received: true })
-    } catch (error) {
-      app.log.error(`Erro ao processar webhook: ${error}`)
-      return reply.code(500).send({ error: 'Erro interno ao processar webhook' })
-    }
-  })
-}
-
-// Função utilitária para verificar a assinatura do Mercado Pago
-function verifyMpSignature(signature: string, raw: string, secret: string): boolean {
-  try {
-    const crypto = require('crypto')
-    const [timestamp, signatureHash] = signature.split('.')
-
-    if (!timestamp || !signatureHash) {
-      return false
-    }
-
-    const data = `${timestamp}.${raw}`
-    const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(data)
-        .digest('hex')
-
-    return expectedSignature === signatureHash
-  } catch (error) {
-    console.error('Erro ao verificar assinatura:', error)
-    return false
-  }
+    })
 }
