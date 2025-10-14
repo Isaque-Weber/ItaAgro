@@ -29,31 +29,25 @@ export class MercadoPagoClient {
   async listSubscriptions(): Promise<any[]> {
     const urlBase = 'https://api.mercadopago.com/preapproval/search';
     const results: any[] = [];
-    let offset = 0;
     const limit = 50; // máximo permitido pela API
+    let offset = 0;
 
-    while (true) {
-      const url = `${urlBase}?offset=${offset}&limit=${limit}`;
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-        },
-      });
-      const data = await response.json();
+      while (true) {
+          const { data } = await axios.get(urlBase, {
+              params: { limit, offset },
+              headers: { Authorization: `Bearer ${this.accessToken}` },
+          })
 
-      // console.log(`[MP API] Resposta página offset=${offset}:`, JSON.stringify(data, null, 2));
+          if (!data.results?.length) break
 
-      if (data.results && data.results.length > 0) {
-        results.push(...data.results);
-        offset += limit;
-        if (data.results.length < limit) break; // chegou no final
-      } else {
-        break; // nada mais a buscar
+          results.push(...data.results)
+          offset += limit
+
+          if (offset >= (data.paging?.total ?? 0)) break
       }
-    }
 
-    console.log('[MP API] Total de assinaturas buscadas:', results.length);
-    return results;
+      console.log('[MP API] Total de assinaturas buscadas:', results.length)
+      return results
   }
 
 
