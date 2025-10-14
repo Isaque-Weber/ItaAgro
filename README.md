@@ -109,7 +109,7 @@ A aplicação estará disponível em `http://localhost:5173`.
 
 ## Contribuição
 
-Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e pull requests.
+Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e pull requests. 
 
 
 ## Licença
