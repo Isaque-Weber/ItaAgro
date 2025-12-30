@@ -4,8 +4,8 @@ export class RemoveVerificationTokenColumns1751654112955 implements MigrationInt
     name = 'RemoveVerificationTokenColumns1751654112955'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "verificationToken"`);
-        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "verificationTokenExpiresAt"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "verificationToken"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "verificationTokenExpiresAt"`);
         await queryRunner.query(`COMMENT ON COLUMN "subscriptions"."updated_at" IS NULL`);
         await queryRunner.query(`COMMENT ON COLUMN "subscriptions"."expires_at" IS NULL`);
         await queryRunner.query(`COMMENT ON COLUMN "subscriptions"."plan" IS NULL`);
