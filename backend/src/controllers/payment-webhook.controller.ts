@@ -86,19 +86,13 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
         // 2️⃣ Processamento do evento
         // -----------------------------
         let payload: WebhookPayload
-        try {
-            payload = JSON.parse(rawBody)
-        } catch (err) {
-            app.log.error(`Erro ao parsear JSON: ${err}`)
-            return reply.code(400).send({ error: 'JSON inválido' })
-        }
+        payload = JSON.parse(rawBody)
 
         if (payload.type !== 'payment' || !payload.data?.id) {
             app.log.info(`Evento ignorado: ${payload.type}`)
             return reply.code(200).send({ received: true, processed: false })
         }
 
-        try {
             // Consulta o pagamento no Mercado Pago
             const payment = await mpClient.getPayment(payload.data.id)
             app.log.info(`💳 Pagamento ${payload.data.id} status=${payment.status}`)
@@ -127,9 +121,5 @@ export async function paymentWebhookRoutes(app: FastifyInstance) {
             }
 
             return reply.code(200).send({ received: true })
-        } catch (error) {
-            app.log.error(`Erro ao processar webhook de pagamento: ${error}`)
-            return reply.code(500).send({ error: 'Erro interno ao processar webhook' })
-        }
     })
 }

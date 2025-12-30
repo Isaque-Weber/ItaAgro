@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { AppDataSource } from '../services/typeorm/data-source'
 import { ChatSession } from '../entities/ChatSession'
 import { ChatMessage } from '../entities/ChatMessage'
-import { processMessageWithAssistant } from '../services/openai/processMessageWithAssistant'
+import { chatQueue } from '../services/redis/chat.queue'
 import { openai } from '../services/openai/openai'
 import { Document } from '../entities/Document'
 import * as fs from "node:fs";
@@ -10,6 +10,8 @@ import pdfParse from 'pdf-parse'
 import pump from 'pump'
 import * as path from 'path';
 import * as os from "node:os";
+import { MoreThan } from 'typeorm'
+
 
 export async function chatRoutes(app: FastifyInstance) {
     const sessionRepo = AppDataSource.getRepository(ChatSession)
@@ -18,7 +20,6 @@ export async function chatRoutes(app: FastifyInstance) {
 
     // Cria uma nova sessão de chat
     app.post('/sessions', { preHandler: [app.authenticate] }, async (req, res) => {
-        try {
             const userId = String((req.user as any).sub)
             const assistantId = process.env.OPENAI_ASSISTANT_ID
             console.log(req.user)
@@ -38,10 +39,6 @@ export async function chatRoutes(app: FastifyInstance) {
 
             await sessionRepo.save(session)
             return res.status(201).send(session)
-        } catch (err) {
-            console.error('[ERRO] Falha ao criar sessão:', err)
-            return res.status(500).send({ error: 'Erro ao criar sessão' })
-        }
     })
 
     app.get('/sessions', { preHandler: [app.authenticate] }, async (req, reply) => {
@@ -123,23 +120,35 @@ export async function chatRoutes(app: FastifyInstance) {
         // DEBUG: veja aqui no log o conteúdo que vai pro assistant
         req.log.debug({ fullContent }, '🛠️  Prompt para o assistant')
 
-        // Salva a mensagem do usuário no banco
-        const userMsg = messageRepo.create({ session, role: 'user', content: content, files })
+        // Salva a mensagem do usuário no banco com status pending
+        const userMsg = messageRepo.create({ 
+            session, 
+            role: 'user', 
+            content: content, 
+            files,
+            status: 'pending'
+        })
         await messageRepo.save(userMsg)
 
-        // Chama o assistant
-        const reply = await processMessageWithAssistant(
-            session.threadId,
-            session.assistantId,
-            fullContent
-        )
+        // Enfileira para processamento assíncrono
+        await chatQueue.add('process-message', {
+            sessionId: session.id,
+            userMessageId: userMsg.id,
+            threadId: session.threadId,
+            content: fullContent,
+            userId: (req.user as any).sub
+        })
 
-        // Salva resposta do assistant
-        const assistantMsg = messageRepo.create({ session, role: 'assistant', content: reply })
-        await messageRepo.save(assistantMsg)
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('📨 Mensagem enfileirada para processamento')
+        console.log('   Session ID:', session.id)
+        console.log('   Message ID:', userMsg.id)
+        console.log('   Conteúdo:', fullContent.substring(0, 100) + (fullContent.length > 100 ? '...' : ''))
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
-        return res.send({
-            reply,
+
+        return res.status(202).send({
+            status: 'processing',
             userMessage: {
                 id: userMsg.id,
                 content: userMsg.content,
@@ -147,6 +156,36 @@ export async function chatRoutes(app: FastifyInstance) {
             }
         })
     })
+
+    // Endpoint para polling do status de uma mensagem
+    app.get('/messages/:id', { preHandler: [app.authenticate] }, async (req, res) => {
+        const { id } = req.params as { id: string }
+        
+        const userMessage = await messageRepo.findOne({ 
+            where: { id },
+            relations: ['session']
+        })
+        
+        if (!userMessage) {
+            return res.status(404).send({ error: 'Mensagem não encontrada' })
+        }
+        
+        // Busca a resposta do assistant (mensagem seguinte ao userMessage)
+        const assistantReply = await messageRepo.findOne({
+            where: { 
+                session: { id: userMessage.session.id }, 
+                role: 'assistant',
+                createdAt: MoreThan(userMessage.createdAt)
+            },
+            order: { createdAt: 'ASC' }
+        })
+        
+        return res.send({
+            status: userMessage.status,
+            reply: assistantReply?.content || null
+        })
+    })
+
 
     app.post('/upload', { preHandler: [app.authenticate] }, async (req, res) => {
         const data = await req.file();
@@ -158,24 +197,18 @@ export async function chatRoutes(app: FastifyInstance) {
             pump(data.file, fs.createWriteStream(tmpPath), err => err ? reject(err) : resolve());
         });
 
-        try {
-            const buffer = fs.readFileSync(tmpPath);
-            const { text } = await pdfParse(buffer);
-            const now = new Date();
-            const expiresAt = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+        const buffer = fs.readFileSync(tmpPath);
+        const { text } = await pdfParse(buffer);
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
 
-            const repo = AppDataSource.getRepository(Document);
-            const doc = repo.create({ filename: data.filename, content: text, expiresAt });
-            await repo.save(doc);
+        const repo = AppDataSource.getRepository(Document);
+        const doc = repo.create({ filename: data.filename, content: text, expiresAt });
+        await repo.save(doc);
 
-            fs.unlink(tmpPath, () => {});
-            // Mantém file_id para compatibilidade com frontend
-            return res.send({ file_id: doc.id, filename: data.filename });
-        } catch (err) {
-            fs.unlink(tmpPath, () => {});
-            console.error('Erro ao processar PDF:', err);
-            return res.status(500).send({ error: 'Falha ao processar PDF' });
-        }
+        fs.unlink(tmpPath, () => {});
+        // Mantém file_id para compatibilidade com frontend
+        return res.send({ file_id: doc.id, filename: data.filename });
     });
 
     app.delete('/sessions/:id', { preHandler: [app.authenticate] }, async (req, res) => {

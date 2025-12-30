@@ -81,13 +81,8 @@ export async function webhookRoutes(app: FastifyInstance) {
         // 2️⃣ Parsing do payload
         // --------------------------
         let payload: WebhookPayload;
-        try {
             payload = JSON.parse(rawBody);
             app.log.info(`Payload processado: ${JSON.stringify(payload)}`);
-        } catch (error) {
-            app.log.error(`Erro ao processar JSON: ${error}`);
-            return reply.code(400).send({ error: 'JSON inválido' });
-        }
 
         if (payload.type !== 'preapproval' || !payload.data?.id) {
             app.log.info(`Evento ignorado: ${payload.type}`);
@@ -97,7 +92,6 @@ export async function webhookRoutes(app: FastifyInstance) {
         // --------------------------
         // 3️⃣ Processamento do evento
         // --------------------------
-        try {
             app.log.info(`🔎 Consultando assinatura ${payload.data.id} no Mercado Pago`);
             const mpSubscription = await mpClient.getSubscription(payload.data.id);
             const newStatus = transformMercadoPagoStatus(mpSubscription.status) as SubscriptionStatus;
@@ -139,9 +133,5 @@ export async function webhookRoutes(app: FastifyInstance) {
             }
 
             return reply.code(200).send({ received: true });
-        } catch (error) {
-            app.log.error(`Erro ao processar webhook: ${error}`);
-            return reply.code(500).send({ error: 'Erro interno ao processar webhook' });
-        }
     });
 }
