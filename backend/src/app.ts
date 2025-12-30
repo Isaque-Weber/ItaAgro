@@ -1,14 +1,15 @@
 // src/app.ts
+import { z } from 'zod';
 import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import authPlugin from './plugins/auth.plugin';
 import { authRoutes } from './controllers/auth.controller';
-import { adminRoutes } from './controllers/admin';
-import { chatRoutes } from './controllers/chat';
-import { webhookRoutes } from './controllers/webhook';
-import { agrofitRoutes } from './controllers/agrofit';
-import { paymentWebhookRoutes } from './controllers/paymentWebhookController';
-import { subscriptionRoutes } from './controllers/subscription';
+import { adminRoutes } from './controllers/admin.controller';
+import { chatRoutes } from './controllers/chat.controller';
+import { webhookRoutes } from './controllers/webhook.controller';
+import { agrofitRoutes } from './controllers/agrofit.controller';
+import { paymentWebhookRoutes } from './controllers/payment-webhook.controller';
+import { subscriptionRoutes } from './controllers/subscription.controller';
 import { googleAuthPlugin } from './plugins/google-auth.plugin';
 import fastifyMultipart from '@fastify/multipart';
 import cron from 'node-cron';
@@ -39,6 +40,32 @@ export async function build(): Promise<FastifyInstance> {
     credentials: true,
     methods: ['GET','POST','PUT','DELETE','OPTIONS'],
     allowedHeaders: ['Content-Type','Authorization'],
+  });
+
+  // Adicionando um Error Handler global
+  app.setErrorHandler((error, request, reply) => {
+    if (error instanceof z.ZodError) {
+      reply.status(400).send({
+        message: 'Validation error',
+        errors: error.flatten().fieldErrors,
+      });
+    } else {
+      // Log do erro para depuração
+      request.log.error(error);
+
+      // Em ambiente de produção, não exponha detalhes do erro
+      if (process.env.NODE_ENV === 'production') {
+        reply.status(500).send({
+          message: 'Internal Server Error',
+        });
+      } else {
+        // Em desenvolvimento, envie detalhes do erro
+        reply.status(500).send({
+          message: error.message,
+          stack: error.stack,
+        });
+      }
+    }
   });
 
   // 2) Autenticação
