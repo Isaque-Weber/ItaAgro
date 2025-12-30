@@ -38,7 +38,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
 
   // 🎯 GET /plans — lista todos os planos ativos de assinatura
   app.get('/plans', { preHandler: [app.authenticate] }, async (req, reply) => {
-    try {
       const planClient = new PreApprovalPlan(mpConfig)
       const res = await planClient.search({ options: { status: 'active' } })
 
@@ -57,10 +56,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
       })
 
       return reply.code(200).send(plans)
-    } catch (err) {
-      app.log.error(err, 'Error fetching subscription plans')
-      return reply.code(500).send({ error: 'Failed to fetch subscription plans' })
-    }
   })
 
   app.get('/user/plan', { preHandler: [app.authenticate] }, async (req, reply) => {
@@ -125,7 +120,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
 
           app.log.info(`🚀 Enviando para MP: ${JSON.stringify(payload, null, 2)}`);
 
-          try {
           // 5) Chama a API do Mercado Pago direto com fetch
           const mpRes = await fetch('https://api.mercadopago.com/preapproval', {
             method: 'POST',
@@ -149,15 +143,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
             init_point:     d.init_point,
             subscriptionId: d.id
           })
-        } catch (err: any) {
-          app.log.error('-=-=- Erro Mercado Pago -=-=-')
-          app.log.error('Message:', err.message)
-          app.log.error('Response data:', err.response?.data ?? err)
-
-          return reply.code(500).send({
-            error: err.response?.data ?? err.message
-          })
-        }
       }
   )
   app.get(
@@ -165,7 +150,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
       { preHandler: [app.authenticate] },
       async (req, reply) => {
         const { id } = req.params as { id: string }
-        try {
           // chamar Mercado Pago via node-fetch ou SDK:
           const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${id}`, {
             headers: { Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}` }
@@ -179,10 +163,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
             status: data.status,
             next_payment_date: data.next_payment_date
           })
-        } catch (err: any) {
-          req.log.error(err)
-          return reply.code(500).send({ error: 'Erro ao buscar assinatura' })
-        }
       }
   )
   app.get(
@@ -217,7 +197,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
           return reply.code(400).send({ error: 'preapproval_id não fornecido' })
         }
 
-        try {
           // Consulta assinatura no Mercado Pago
           const mp = new MercadoPagoClient()
           const mpSub = await mp.getSubscription(preapproval_id)
@@ -266,10 +245,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
             next_payment_date: mpSub.next_payment_date,
             plan: sub.plan,
           })
-        } catch (error: any) {
-          app.log.error('Erro ao confirmar assinatura:', error)
-          return reply.code(500).send({ error: 'Erro ao confirmar assinatura' })
-        }
       }
   )
 
@@ -284,7 +259,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
           return reply.code(400).send({ error: 'preapproval_id não fornecido' })
         }
 
-        try {
           // Consulta assinatura diretamente no Mercado Pago
           const mp = new MercadoPagoClient()
           const mpSub = await mp.getSubscription(preapproval_id)
@@ -337,10 +311,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
             next_payment_date: mpSub.next_payment_date,
             plan: sub.plan,
           })
-        } catch (error: any) {
-          app.log.error('Erro ao atualizar assinatura:', error)
-          return reply.code(500).send({ error: 'Erro ao atualizar assinatura' })
-        }
       }
   )
 
@@ -350,7 +320,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
         if (!preapproval_id) {
           return reply.code(400).send({ error: 'preapproval_id obrigatório' });
         }
-        try {
           const mp = new MercadoPagoClient();
           // Cancela no MP
           await mp.cancelSubscription(preapproval_id);
@@ -363,10 +332,6 @@ export async function subscriptionRoutes(app: FastifyInstance) {
           );
 
           return reply.send({ success: true });
-        } catch (err: any) {
-          app.log.error('Erro ao cancelar assinatura:', err);
-          return reply.code(500).send({ error: 'Erro ao cancelar assinatura' });
-        }
       }
   );
 
