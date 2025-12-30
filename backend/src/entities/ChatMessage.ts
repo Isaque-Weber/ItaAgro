@@ -30,6 +30,9 @@ export class ChatMessage {
     @Column({ type: "jsonb", nullable: true })
     files?: { file_id: string, filename: string }[]
 
+    @Column({ type: 'varchar', length: 20, default: 'completed' })
+    status!: 'pending' | 'processing' | 'completed' | 'failed'
+
     @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
     createdAt!: Date
 }
