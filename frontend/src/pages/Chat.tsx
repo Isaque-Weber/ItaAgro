@@ -23,6 +23,50 @@ type Session = {
 
 import { useAuth } from '../contexts/AuthContext';
 
+// Componente para efeito de digitação suave
+function Typewriter({ content, isTyping }: { content: string, isTyping: boolean }) {
+    const [displayedContent, setDisplayedContent] = useState('');
+    const indexRef = useRef(0);
+
+    useEffect(() => {
+        // Se não estamos "digitando" (histórico antigo), mostra tudo
+        if (!isTyping) {
+            setDisplayedContent(content);
+            indexRef.current = content.length;
+            return;
+        }
+
+        // Se o conteúdo real é maior que o exibido, precisamos "digitar"
+        if (indexRef.current < content.length) {
+            const interval = setInterval(() => {
+                setDisplayedContent((prev) => {
+                    const nextIndex = prev.length;
+                    if (nextIndex < content.length) {
+                        indexRef.current = nextIndex + 1;
+                        // Adiciona pequenos blocos para ser rápido, mas suave
+                        // Se estiver muito atrasado (>50 chars), acelera
+                        const charsToAdd = (content.length - nextIndex > 50) ? 5 : 1;
+                        return prev + content.slice(nextIndex, nextIndex + charsToAdd);
+                    }
+                    return prev;
+                });
+            }, 10); // 10ms por frame = muito fluido
+
+            return () => clearInterval(interval);
+        }
+    }, [content, isTyping]);
+
+    return (
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+        >
+            {displayedContent}
+        </ReactMarkdown>
+    );
+}
+
+
 export function Chat() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -198,6 +242,16 @@ export function Chat() {
             setStarting(true)
             setIsTyping(true)
             setInitialQuestionSent(true)
+            
+            // Adiciona mensagem do usuário localmente
+            const userMsg: Message = {
+                id: `user-${Date.now()}`,
+                role: 'user',
+                content: initialQuestion,
+                createdAt: new Date().toISOString()
+            };
+            setMessages([userMsg]);
+            
             fetch(
                 `${import.meta.env.VITE_API_BASE_URL}/chat/sessions/${currentSession.id}/messages`,
                 {
@@ -207,11 +261,17 @@ export function Chat() {
                     body: JSON.stringify({ content: initialQuestion })
                 }
             )
-                .then(res => {
+                .then(async res => {
                     if (!res.ok) throw new Error('Falha no envio inicial')
-                    return res.json()
+                    const data = await res.json()
+                    
+                    // Se resposta assíncrona, fazer polling
+                    if (res.status === 202 && data.status === 'processing' && data.userMessage?.id) {
+                        await pollForReply(data.userMessage.id, currentSession.id)
+                    } else {
+                        await loadMessages(currentSession.id)
+                    }
                 })
-                .then(() => loadMessages(currentSession.id))
                 .catch(() => {
                     setMessages(msgs => [
                         ...msgs,
@@ -242,6 +302,7 @@ export function Chat() {
         location.pathname
     ])
 
+
     async function sendMessage(e: FormEvent) {
         e.preventDefault();
         if (!input.trim() || !currentSession) return;
@@ -249,6 +310,7 @@ export function Chat() {
         setIsTyping(true);
 
         // Limpa input logo ao enviar
+        const messageContent = input;
         setInput('');
 
         let file_id: string | undefined = undefined;
@@ -291,14 +353,14 @@ export function Chat() {
         const userMsg: Message = {
             id: `user-${Date.now()}`,
             role: 'user',
-            content: input,
+            content: messageContent,
             createdAt: new Date().toISOString(),
             files: file_id && file_name ? [{ file_id, filename: file_name }] : undefined
         };
         setMessages(prev => [...prev, userMsg]);
 
         // 2. Enviar mensagem para o chat (com file_id + filename se houver)
-        const body: any = { content: input };
+        const body: any = { content: messageContent };
         if (file_id && file_name) body.files = [{ file_id, filename: file_name }];
 
         try {
@@ -311,9 +373,33 @@ export function Chat() {
                     body: JSON.stringify(body)
                 }
             );
+            
             if (!res.ok) throw new Error('Erro no servidor');
-            // Após resposta, recarrega todas as mensagens da sessão (garante consistência)
-            await loadMessages(currentSession.id);
+            
+            const responseData = await res.json();
+            
+            // Se a resposta é assíncrona (status 202), fazer polling
+            if (res.status === 202 && responseData.status === 'processing') {
+                const userMessageId = responseData.userMessage?.id;
+                if (userMessageId) {
+                    await pollForReply(userMessageId, currentSession.id);
+                } else {
+                    // Fallback: recarrega mensagens
+                    await loadMessages(currentSession.id);
+                }
+            } else if (responseData.reply) {
+                // Resposta síncrona (compatibilidade com versão antiga)
+                const assistantMsg: Message = {
+                    id: `assistant-${Date.now()}`,
+                    role: 'assistant',
+                    content: responseData.reply,
+                    createdAt: new Date().toISOString()
+                };
+                setMessages(prev => [...prev, assistantMsg]);
+            } else {
+                // Fallback: recarrega mensagens
+                await loadMessages(currentSession.id);
+            }
         } catch {
             setMessages(prev => [
                 ...prev,
@@ -327,9 +413,86 @@ export function Chat() {
         } finally {
             setIsTyping(false);
             setIsSending(false);
-            setInput('');
         }
     }
+
+    // Função de polling para buscar resposta do assistant
+    async function pollForReply(userMessageId: string, sessionId: string) {
+        const maxAttempts = 120 * 3; // Ajustado: mais tentativas pois o intervalo é menor (timeout total ~120s)
+        const pollInterval = 300; // Reduzido para 300ms para maior fluidez
+        
+        // ID temporário para a mensagem do assistente sendo montada
+        const tempAssistantId = `assistant-streaming-${Date.now()}`;
+        let hasCreatedAssistantBubble = false;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                const res = await fetch(
+                    `${import.meta.env.VITE_API_BASE_URL}/chat/messages/${userMessageId}`,
+                    { credentials: 'include' }
+                );
+                
+                if (!res.ok) {
+                    console.error('Erro no polling:', res.status);
+                    break;
+                }
+                
+                const data = await res.json();
+                
+                // Se já temos algum conteúdo parcial (data.reply), vamos mostrar!
+                if (data.reply) {
+                    const assistantMsg: Message = {
+                        id: tempAssistantId, // Mantém mesmo ID para React atualizar o componente
+                        role: 'assistant',
+                        content: data.reply,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    if (!hasCreatedAssistantBubble) {
+                        // Primeira vez que aparece conteúdo: cria a bolha
+                        setMessages(prev => [...prev, assistantMsg]);
+                        hasCreatedAssistantBubble = true;
+                    } else {
+                        // Atualiza a bolha existente
+                        setMessages(prev => prev.map(m => 
+                            m.id === tempAssistantId ? assistantMsg : m
+                        ));
+                    }
+                }
+
+                if (data.status === 'completed') {
+                    // Confirma finalização
+                    return;
+                }
+                
+                if (data.status === 'failed') {
+                    setMessages(prev => [
+                        ...prev,
+                        {
+                            id: `err-${Date.now()}`,
+                            role: 'assistant',
+                            content: 'Erro ao processar mensagem. Tente novamente.',
+                            createdAt: new Date().toISOString()
+                        }
+                    ]);
+                    return;
+                }
+                
+                // Status ainda é processing, aguarda e tenta novamente
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+            } catch (err) {
+                console.error('Erro no polling:', err);
+                break;
+            }
+        }
+        
+        // Se chegou aqui, timeout ou erro
+        if (!hasCreatedAssistantBubble) {
+             await loadMessages(sessionId);
+        }
+    }
+
+
 
     async function logout() {
         await onLogout();
@@ -469,7 +632,7 @@ export function Chat() {
                         <ChatStartScreen />
                     ) : (
                         <>
-                            {messages.map(m => (
+                            {messages.map((m, i) => (
                                 <div
                                     key={m.id}
                                     className={`max-w-[90%] md:max-w-2xl px-4 py-3 rounded-lg shadow-sm whitespace-pre-wrap
@@ -496,13 +659,22 @@ export function Chat() {
                                             )
                                     )}
 
-                                    <div className="prose prose-sm max-w-none text-sm leading-relaxed dark:prose-invert">
-                                        <ReactMarkdown
-                                            remarkPlugins={[remarkGfm]}
-                                            rehypePlugins={[rehypeHighlight]}
-                                        >
-                                            {m.content}
-                                        </ReactMarkdown>
+                                    <div className="prose prose-sm max-w-none text-sm leading-relaxed dark:prose-invert 
+                                        prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5"
+                                    >
+                                        {m.role === 'assistant' ? (
+                                            <Typewriter 
+                                                content={m.content} 
+                                                isTyping={i === messages.length - 1 && isTyping} 
+                                            />
+                                        ) : (
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                rehypePlugins={[rehypeHighlight]}
+                                            >
+                                                {m.content}
+                                            </ReactMarkdown>
+                                        )}
                                     </div>
                                 </div>
                             ))}
