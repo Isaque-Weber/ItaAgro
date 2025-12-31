@@ -12,6 +12,7 @@ import VerifyEmail from '../pages/VerifyEmail'
 import { useAuth } from '../contexts/AuthContext'
 import { TermsPage } from '../pages/TermsPage'
 import { PrivacyPage } from '../pages/PrivacyPage'
+import { LandingPage } from '../pages/LandingPage'
 
 
 export function AppRoutes() {
@@ -23,7 +24,7 @@ export function AppRoutes() {
         <Routes>
             <Route
                 path="/"
-                element={isAuth ? <Navigate to="/chat" replace /> : <Navigate to="/login" replace />}
+                element={<LandingPage />}
             />
             <Route
                 path="/login"
