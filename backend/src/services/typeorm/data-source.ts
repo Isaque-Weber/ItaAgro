@@ -7,6 +7,8 @@ import { ChatSession } from '../../entities/ChatSession'
 import { ChatMessage } from '../../entities/ChatMessage'
 import { Document } from '../../entities/Document'
 
+import { join } from 'path'
+
 export const AppDataSource = new DataSource({
     type:     'postgres',
     url:      process.env.DATABASE_URL,
@@ -21,7 +23,7 @@ export const AppDataSource = new DataSource({
         ChatMessage,
         Document
     ],
-    migrations: [ process.env.NODE_ENV === 'production' ? 'dist/src/services/typeorm/migrations/*.js' : 'src/services/typeorm/migrations/*.ts' ],
+    migrations: [ join(__dirname, 'migrations', process.env.NODE_ENV === 'production' ? '*.js' : '*.ts') ],
 })
 
 AppDataSource.initialize()
