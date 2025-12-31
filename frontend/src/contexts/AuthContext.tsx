@@ -81,8 +81,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isVerifyEmailPage = location.pathname === '/verify-email';
         const isTermsPage = location.pathname === '/termos';
         const isPrivacyPage = location.pathname === '/privacidade';
+        const isLandingPage = location.pathname === '/';
 
-        if (isLoginPage || isRecoverPage || isSignupPage || isVerifyEmailPage || isTermsPage || isPrivacyPage) {
+        if (isLoginPage || isRecoverPage || isSignupPage || isVerifyEmailPage || isTermsPage || isPrivacyPage || isLandingPage) {
             setLoading(false);
         } else {
             loadUser().catch(() => {
